@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Header, Logo, Progress, ReplacementChoice } from "@/components/pivot/ui";
 
 type Screen = "setup" | "home" | "urge" | "recommendation" | "active" | "followup" | "history" | "safety";
@@ -23,6 +23,19 @@ export default function Home() {
   const [started, setStarted] = useState(false);
   const [modelPrimaryId, setModelPrimaryId] = useState<string | null>(null);
   const [history, setHistory] = useState<{ date: string; choice: string; outcome: string }[]>(() => { if (typeof window === "undefined") return []; try { return JSON.parse(localStorage.getItem("pivot-state") ?? "{}").history ?? []; } catch { return []; } });
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetch("/api/state").then((response) => response.ok ? response.json() : null).then((snapshot: { goal?: string; replacements?: { id: string }[]; history?: { choice: string; outcome: string; helpful: boolean; date: string }[] } | null) => {
+      if (cancelled || !snapshot?.goal || goal) return;
+      const replacementIds = snapshot.replacements?.map((item) => item.id).filter((id) => replacements.some((option) => option.id === id)) ?? [];
+      setGoal(snapshot.goal);
+      if (replacementIds.length >= 3) setSelected(replacementIds);
+      setHistory(snapshot.history ?? []);
+      setScreen("home");
+    }).catch(() => undefined);
+    return () => { cancelled = true; };
+  }, [goal]);
 
   const approved = useMemo(() => replacements.filter((item) => selected.includes(item.id)), [selected]);
   const primary = approved.find((item) => item.id === modelPrimaryId) ?? approved[0] ?? replacements[0];
