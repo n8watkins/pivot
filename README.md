@@ -134,7 +134,8 @@ npm run build
 npm run test:e2e
 ```
 
-Playwright starts the production build against local SQLite when no server is already listening on port 3001.
+Playwright starts the production build on port 3101 against an isolated `data/pivot-e2e.db` database.
+It never reuses the manual-testing server or `data/pivot.db`.
 The GitHub workflow runs the same gates on pushes to `main` and pull requests.
 
 ## Deploy to Vercel
