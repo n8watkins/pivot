@@ -52,11 +52,20 @@ test("setup supports multiple goals and a custom replacement", async ({ page }) 
   await page.getByRole("button", { name: "Add" }).nth(0).click();
   await goalInput.pressSequentially("checking email");
   await page.getByRole("button", { name: "Add" }).nth(0).click();
+  await goalInput.pressSequentially("skipping meals");
+  await page.getByRole("button", { name: "Add" }).nth(0).click();
+  await goalInput.pressSequentially("avoiding hard conversations");
+  await page.getByRole("button", { name: "Add" }).nth(0).click();
   await page.getByLabel(/Add your own action/).pressSequentially("Sketch for five minutes");
   await page.getByRole("button", { name: "Add" }).nth(1).click();
+  await page.getByLabel(/Add your own action/).pressSequentially("Read a page");
+  await page.getByRole("button", { name: "Add" }).nth(1).click();
+  await page.getByLabel(/Add your own action/).pressSequentially("Call a friend");
+  await page.getByRole("button", { name: "Add" }).nth(1).click();
   await expect(page.getByRole("button", { name: /Sketch for five minutes/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Call a friend/ })).toBeVisible();
   await page.getByRole("button", { name: /Continue/ }).click();
-  await expect(page.getByText("late night scrolling · checking email")).toBeVisible();
+  await expect(page.getByText("late night scrolling · checking email · skipping meals · avoiding hard conversations")).toBeVisible();
 });
 
 test("privacy event can be created and deleted for the anonymous session", async ({ request }) => {

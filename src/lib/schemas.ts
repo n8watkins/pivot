@@ -8,15 +8,15 @@ export const replacementInputSchema = z.object({
 });
 
 export const setupInputSchema = z.object({
-  goals: z.array(z.string().trim().min(2).max(120)).min(1).max(3),
-  replacements: z.array(replacementInputSchema).min(3).max(5),
+  goals: z.array(z.string().trim().min(2).max(120)).min(1),
+  replacements: z.array(replacementInputSchema).min(1),
 }).superRefine((value, context) => {
   if (new Set(value.goals.map((goal) => goal.toLowerCase())).size !== value.goals.length) context.addIssue({ code: "custom", path: ["goals"], message: "Goals must be unique" });
   if (new Set(value.replacements.map((replacement) => replacement.id)).size !== value.replacements.length) context.addIssue({ code: "custom", path: ["replacements"], message: "Replacement ids must be unique" });
 });
 
 export const recommendationInputSchema = z.object({
-  replacements: z.array(replacementInputSchema).min(1).max(5),
+  replacements: z.array(replacementInputSchema).min(1),
   context: z.string().max(500).default(""),
 });
 
