@@ -5,8 +5,8 @@ const replacements = ["walk", "breathe", "stretch"].map((id) => ({ id, name: id,
 
 describe("server input contracts", () => {
   it("accepts a valid setup and rejects duplicate replacement ids", () => {
-    expect(setupInputSchema.safeParse({ goal: "late night scrolling", replacements }).success).toBe(true);
-    expect(setupInputSchema.safeParse({ goal: "x", replacements: [...replacements, replacements[0]] }).success).toBe(false);
+    expect(setupInputSchema.safeParse({ goals: ["late night scrolling"], replacements }).success).toBe(true);
+    expect(setupInputSchema.safeParse({ goals: ["x", "x"], replacements }).success).toBe(false);
   });
 
   it("bounds closed-loop inputs", () => {

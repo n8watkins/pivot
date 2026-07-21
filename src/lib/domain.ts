@@ -5,6 +5,7 @@ import { replacementInputSchema } from "./schemas";
 
 export type PivotSnapshot = {
   goal: string;
+  goals: string[];
   replacements: ReplacementOption[];
   history: { id: string; replacementId: string; choice: string; outcome: string; helpful: boolean; date: string }[];
   active?: { id: string; replacementId: string; startedAt: string };
@@ -13,18 +14,18 @@ export type PivotSnapshot = {
 const memoryState = new Map<string, PivotSnapshot>();
 const memoryActive = new Map<string, { id: string; sessionId: string; replacementId: string; startedAt: string }>();
 
-export async function saveSetup(goal: string, replacements: ReplacementOption[]) {
+export async function saveSetup(goals: string[], replacements: ReplacementOption[]) {
   const sessionId = await ensureSession();
   const db = getDatabase();
   const parsed = replacements.map((replacement) => replacementInputSchema.parse(replacement));
   if (!db) {
-    memoryState.set(sessionId, { goal: goal.trim(), replacements: parsed, history: memoryState.get(sessionId)?.history ?? [], active: memoryState.get(sessionId)?.active });
+    memoryState.set(sessionId, { goal: goals[0] ?? "", goals, replacements: parsed, history: memoryState.get(sessionId)?.history ?? [], active: memoryState.get(sessionId)?.active });
     return sessionId;
   }
   await initializeDatabase();
   await db.execute({ sql: "DELETE FROM replacements WHERE session_id = ?", args: [sessionId] });
   await db.execute({ sql: "DELETE FROM goals WHERE session_id = ?", args: [sessionId] });
-  await db.execute({ sql: "INSERT INTO goals (id, session_id, label) VALUES (?, ?, ?)", args: [randomUUID(), sessionId, goal.trim()] });
+  for (const goal of goals) await db.execute({ sql: "INSERT INTO goals (id, session_id, label, created_at) VALUES (?, ?, ?, ?)", args: [randomUUID(), sessionId, goal.trim(), new Date().toISOString()] });
   for (const replacement of parsed) await db.execute({ sql: "INSERT INTO replacements (id, session_id, label, detail, duration) VALUES (?, ?, ?, ?, ?)", args: [`${sessionId}:${replacement.id}`, sessionId, replacement.name, replacement.detail, replacement.duration] });
   return sessionId;
 }
@@ -32,16 +33,17 @@ export async function saveSetup(goal: string, replacements: ReplacementOption[])
 export async function getSnapshot(): Promise<PivotSnapshot> {
   const sessionId = await ensureSession();
   const db = getDatabase();
-  if (!db) return memoryState.get(sessionId) ?? { goal: "", replacements: [], history: [] };
+  if (!db) return memoryState.get(sessionId) ?? { goal: "", goals: [], replacements: [], history: [] };
   await initializeDatabase();
   const [goal, replacements, history, active] = await Promise.all([
-    db.execute({ sql: "SELECT label FROM goals WHERE session_id = ? LIMIT 1", args: [sessionId] }),
+    db.execute({ sql: "SELECT label FROM goals WHERE session_id = ? ORDER BY rowid", args: [sessionId] }),
     db.execute({ sql: "SELECT CASE WHEN instr(id, ':') > 0 THEN substr(id, instr(id, ':') + 1) ELSE id END as id, label as name, detail, duration FROM replacements WHERE session_id = ? ORDER BY rowid", args: [sessionId] }),
     db.execute({ sql: "SELECT f.id, r.replacement_id as replacementId, rp.label as choice, f.outcome, f.helpfulness, f.rowid as date FROM follow_ups f JOIN active_interventions a ON a.id = f.intervention_id JOIN recommendations r ON r.id = a.recommendation_id JOIN urge_sessions u ON u.id = r.urge_session_id JOIN replacements rp ON rp.session_id = u.session_id AND (rp.id = r.replacement_id OR (instr(rp.id, ':') > 0 AND substr(rp.id, instr(rp.id, ':') + 1) = r.replacement_id)) WHERE u.session_id = ? ORDER BY f.rowid DESC LIMIT 30", args: [sessionId] }),
     db.execute({ sql: "SELECT id, replacement_id as replacementId, started_at as startedAt FROM active_interventions WHERE session_id = ? AND completed_at IS NULL ORDER BY started_at DESC LIMIT 1", args: [sessionId] }),
   ]);
   const activeRow = active.rows[0];
-  return { goal: String(goal.rows[0]?.label ?? ""), replacements: replacements.rows as unknown as ReplacementOption[], history: history.rows.map((row) => ({ id: String(row.id), replacementId: String(row.replacementId), choice: String(row.choice), outcome: String(row.outcome), helpful: Boolean(row.helpfulness), date: String(row.date) })), active: activeRow ? { id: String(activeRow.id), replacementId: String(activeRow.replacementId), startedAt: String(activeRow.startedAt) } : undefined };
+  const goals = goal.rows.map((row) => String(row.label));
+  return { goal: goals[0] ?? "", goals, replacements: replacements.rows as unknown as ReplacementOption[], history: history.rows.map((row) => ({ id: String(row.id), replacementId: String(row.replacementId), choice: String(row.choice), outcome: String(row.outcome), helpful: Boolean(row.helpfulness), date: String(row.date) })), active: activeRow ? { id: String(activeRow.id), replacementId: String(activeRow.replacementId), startedAt: String(activeRow.startedAt) } : undefined };
 }
 
 export async function recordClosedLoop(input: { replacementId: string; intensity: number; contextType: string; reason: string; firstStep: string; source: string; outcome: string; helpful: boolean }) {

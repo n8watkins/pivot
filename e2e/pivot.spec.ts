@@ -3,8 +3,8 @@ import { expect, test } from "@playwright/test";
 test("new user can complete a pivot and review history", async ({ page }) => {
   await page.goto("/");
   await page.waitForTimeout(500);
-  await page.getByLabel("My goal is to stop").pressSequentially("late night scrolling");
-  await page.getByLabel("My goal is to stop").press("Tab");
+  await page.getByLabel("Add a change").pressSequentially("late night scrolling");
+  await page.getByLabel("Add a change").press("Tab");
   await expect(page.getByRole("button", { name: /Continue/ })).toBeEnabled();
   await page.getByRole("button", { name: /Continue/ }).click();
   await expect(page.getByRole("heading", { name: "Ready when you are." })).toBeVisible();
@@ -23,8 +23,8 @@ test("new user can complete a pivot and review history", async ({ page }) => {
 test("high-risk context routes away from a normal recommendation", async ({ page }) => {
   await page.goto("/");
   await page.waitForTimeout(500);
-  await page.getByLabel("My goal is to stop").pressSequentially("late night scrolling");
-  await page.getByLabel("My goal is to stop").press("Tab");
+  await page.getByLabel("Add a change").pressSequentially("late night scrolling");
+  await page.getByLabel("Add a change").press("Tab");
   await expect(page.getByRole("button", { name: /Continue/ })).toBeEnabled();
   await page.getByRole("button", { name: /Continue/ }).click();
   await page.getByRole("button", { name: /I’m having an urge/ }).click();
@@ -35,7 +35,7 @@ test("high-risk context routes away from a normal recommendation", async ({ page
 
 test("active intervention survives refresh", async ({ page }) => {
   await page.goto("/");
-  await page.getByLabel("My goal is to stop").pressSequentially("late night scrolling");
+  await page.getByLabel("Add a change").pressSequentially("late night scrolling");
   await page.getByRole("button", { name: /Continue/ }).click();
   await page.getByRole("button", { name: /I’m having an urge/ }).click();
   await page.getByRole("button", { name: "Skip and show me something" }).click();
@@ -43,6 +43,20 @@ test("active intervention survives refresh", async ({ page }) => {
   await page.waitForTimeout(250);
   await page.reload();
   await expect(page.getByRole("heading", { name: "Take a short walk" })).toBeVisible();
+});
+
+test("setup supports multiple goals and a custom replacement", async ({ page }) => {
+  await page.goto("/");
+  const goalInput = page.getByLabel("Add a change");
+  await goalInput.pressSequentially("late night scrolling");
+  await page.getByRole("button", { name: "Add" }).nth(0).click();
+  await goalInput.pressSequentially("checking email");
+  await page.getByRole("button", { name: "Add" }).nth(0).click();
+  await page.getByLabel(/Add your own action/).pressSequentially("Sketch for five minutes");
+  await page.getByRole("button", { name: "Add" }).nth(1).click();
+  await expect(page.getByRole("button", { name: /Sketch for five minutes/ })).toBeVisible();
+  await page.getByRole("button", { name: /Continue/ }).click();
+  await expect(page.getByText("late night scrolling · checking email")).toBeVisible();
 });
 
 test("privacy event can be created and deleted for the anonymous session", async ({ request }) => {
