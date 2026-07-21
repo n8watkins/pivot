@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { deterministicFallback, hasHighRiskContext, parseRecommendation, rankReplacements } from "./recommendation";
+import { deterministicFallback, hasHighRiskContext, hasUnsupportedContext, parseRecommendation, rankReplacements } from "./recommendation";
 
 const options = [
   { id: "walk", name: "Take a short walk", detail: "", duration: "5 min" },
@@ -11,6 +11,11 @@ describe("recommendation safety and fallback", () => {
   it("rejects high-risk context before normal recommendations", () => {
     expect(hasHighRiskContext("I want to hurt myself")).toBe(true);
     expect(hasHighRiskContext("I am bored")).toBe(false);
+  });
+
+  it("routes unsupported clinical categories away from habit recommendations", () => {
+    expect(hasUnsupportedContext("I need help with an eating disorder")).toBe(true);
+    expect(hasUnsupportedContext("I keep checking my email")).toBe(false);
   });
 
   it("ranks helpful replacements above rejected ones", () => {

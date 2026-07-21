@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import { deleteContextTag, saveContextTag } from "@/lib/domain";
+import { ensureSession } from "@/lib/session";
+import { isRateLimited, rateLimitResponse } from "@/lib/rate-limit";
 
 export async function POST(request: Request) {
+  const sessionId = await ensureSession();
+  if (isRateLimited(`tags:${sessionId}`, 30)) return rateLimitResponse();
   const body = await request.json().catch(() => ({}));
   if (typeof body.label !== "string" || body.label.trim().length < 2 || body.label.trim().length > 40) return NextResponse.json({ error: "Tag must be between 2 and 40 characters." }, { status: 400 });
   await saveContextTag(body.label);
@@ -9,6 +13,8 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+  const sessionId = await ensureSession();
+  if (isRateLimited(`tags:${sessionId}`, 30)) return rateLimitResponse();
   const label = new URL(request.url).searchParams.get("label");
   if (!label) return NextResponse.json({ error: "Tag is required." }, { status: 400 });
   await deleteContextTag(label);

@@ -35,7 +35,16 @@ test("high-risk context routes away from a normal recommendation", async ({ page
   await page.getByRole("button", { name: /I’m having an urge/ }).click();
   await page.getByLabel(/Anything else on your mind/).fill("I want to hurt myself");
   await page.getByRole("button", { name: /Show me a next step/ }).click();
-  await expect(page.getByRole("heading", { name: "This may need more than a pivot." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "This may need immediate support." })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Call 988/ })).toBeVisible();
+});
+
+test("unsupported clinical context routes to specialized support", async ({ page }) => {
+  await createBasicPivot(page);
+  await page.getByRole("button", { name: /I’m having an urge/ }).click();
+  await page.getByLabel(/Anything else on your mind/).fill("I need help with an eating disorder");
+  await page.getByRole("button", { name: /Show me a next step/ }).click();
+  await expect(page.getByRole("heading", { name: "This needs specialized support." })).toBeVisible();
 });
 
 test("active intervention survives refresh", async ({ page }) => {
@@ -163,6 +172,19 @@ test("custom context tags persist and can be removed in settings", async ({ page
   await expect(page.getByText("restless")).not.toBeVisible();
 });
 
+test("individual History entries can be deleted", async ({ page }) => {
+  await createBasicPivot(page);
+  await page.getByRole("button", { name: /I’m having an urge/ }).click();
+  await page.getByRole("button", { name: "Skip and show me something" }).click();
+  await page.getByRole("button", { name: /Start this action/ }).click();
+  await page.getByRole("button", { name: /I’m done for now/ }).click();
+  await Promise.all([page.waitForResponse("**/api/closed-loop"), page.getByRole("button", { name: "Much lighter" }).click()]);
+  await page.reload();
+  await page.getByRole("button", { name: /History/ }).click();
+  await page.getByRole("button", { name: /Delete Take a short walk History entry/ }).click();
+  await expect(page.getByText("Your first entry will appear here after a pivot.")).toBeVisible();
+});
+
 test("privacy event can be created and deleted for the anonymous session", async ({ request }) => {
   const created = await request.post("/api/events", { data: { type: "follow_up_completed", payload: { replacementId: "walk", helpful: true } } });
   expect(created.ok()).toBeTruthy();
@@ -179,4 +201,11 @@ test("anonymous session deletion removes pivot state", async ({ request }) => {
   expect((await (await request.get("/api/state")).json()).pivots).toHaveLength(1);
   expect((await request.delete("/api/session")).ok()).toBeTruthy();
   expect((await (await request.get("/api/state")).json()).pivots).toEqual([]);
+});
+
+test("security headers are present", async ({ request }) => {
+  const response = await request.get("/");
+  expect(response.headers()["x-content-type-options"]).toBe("nosniff");
+  expect(response.headers()["x-frame-options"]).toBe("DENY");
+  expect(response.headers()["content-security-policy"]).toContain("frame-ancestors 'none'");
 });

@@ -12,8 +12,10 @@ export type Recommendation = z.infer<typeof recommendationSchema>;
 export type ReplacementOption = { id: string; name: string; detail: string; duration: string };
 
 const riskyPatterns = /\b(self[- ]?harm|suicide|kill myself|hurt myself|hurt someone|overdose|abuse|illegal|weapon)\b/i;
+const unsupportedPatterns = /\b(eating disorder|anorexia|bulimia|purging|detox|withdrawal|gambling addiction|substance addiction|domestic violence|psychosis|manic episode)\b/i;
 
 export function hasHighRiskContext(input: string) { return riskyPatterns.test(input); }
+export function hasUnsupportedContext(input: string) { return unsupportedPatterns.test(input); }
 
 export function rankReplacements(options: ReplacementOption[], history: { replacementId: string; helpful: boolean }[] = []) {
   const scores = new Map(options.map((option, index) => [option.id, options.length - index]));

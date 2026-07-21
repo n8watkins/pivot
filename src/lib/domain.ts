@@ -88,6 +88,23 @@ export async function deleteContextTag(label: string) {
   await db.execute({ sql: "DELETE FROM context_tags WHERE session_id = ? AND label = ?", args: [sessionId, label] });
 }
 
+export async function deleteHistoryEvent(id: string) {
+  const sessionId = await ensureSession();
+  const db = getDatabase();
+  if (!db) { const snapshot = await getSnapshot(); const exists = snapshot.history.some((event) => event.id === id); memoryState.set(sessionId, { ...snapshot, history: snapshot.history.filter((event) => event.id !== id) }); return exists; }
+  await initializeDatabase();
+  const linked = await db.execute({ sql: "SELECT a.id as interventionId, r.id as recommendationId, u.id as urgeId FROM follow_ups f JOIN active_interventions a ON a.id = f.intervention_id JOIN recommendations r ON r.id = a.recommendation_id JOIN urge_sessions u ON u.id = r.urge_session_id WHERE f.id = ? AND u.session_id = ?", args: [id, sessionId] });
+  const row = linked.rows[0];
+  if (!row) return false;
+  await db.batch([
+    { sql: "DELETE FROM follow_ups WHERE id = ?", args: [id] },
+    { sql: "DELETE FROM active_interventions WHERE id = ?", args: [String(row.interventionId)] },
+    { sql: "DELETE FROM recommendations WHERE id = ?", args: [String(row.recommendationId)] },
+    { sql: "DELETE FROM urge_sessions WHERE id = ?", args: [String(row.urgeId)] },
+  ], "write");
+  return true;
+}
+
 export async function recordClosedLoop(input: { replacementId: string; intensity: number; contextType: string; reason: string; firstStep: string; source: string; outcome: string; helpful: boolean }) {
   const sessionId = await ensureSession();
   const db = getDatabase();

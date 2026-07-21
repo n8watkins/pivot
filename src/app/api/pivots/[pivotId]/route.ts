@@ -1,10 +1,14 @@
 import { NextResponse } from "next/server";
 import { getSnapshot, saveSetup } from "@/lib/domain";
 import { pivotInputSchema } from "@/lib/schemas";
+import { ensureSession } from "@/lib/session";
+import { isRateLimited, rateLimitResponse } from "@/lib/rate-limit";
 
 type RouteContext = { params: Promise<{ pivotId: string }> };
 
 export async function PATCH(request: Request, context: RouteContext) {
+  const sessionId = await ensureSession();
+  if (isRateLimited(`pivots:${sessionId}`, 30)) return rateLimitResponse();
   const { pivotId } = await context.params;
   const snapshot = await getSnapshot();
   if (!snapshot.pivots.some((pivot) => pivot.id === pivotId)) return NextResponse.json({ error: "Pivot not found." }, { status: 404 });
@@ -17,6 +21,8 @@ export async function PATCH(request: Request, context: RouteContext) {
 }
 
 export async function DELETE(_request: Request, context: RouteContext) {
+  const sessionId = await ensureSession();
+  if (isRateLimited(`pivots:${sessionId}`, 30)) return rateLimitResponse();
   const { pivotId } = await context.params;
   const snapshot = await getSnapshot();
   if (!snapshot.pivots.some((pivot) => pivot.id === pivotId)) return NextResponse.json({ error: "Pivot not found." }, { status: 404 });

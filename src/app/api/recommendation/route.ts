@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
-import { deterministicFallback, hasHighRiskContext, parseRecommendation, type ReplacementOption } from "@/lib/recommendation";
+import { deterministicFallback, hasHighRiskContext, hasUnsupportedContext, parseRecommendation, type ReplacementOption } from "@/lib/recommendation";
 import { ensureSession, getDatabase } from "@/lib/session";
 import { getSnapshot } from "@/lib/domain";
 import { recommendationInputSchema } from "@/lib/schemas";
+import { isRateLimited, rateLimitResponse } from "@/lib/rate-limit";
 
 export async function POST(request: Request) {
-  await ensureSession();
+  const sessionId = await ensureSession();
+  if (isRateLimited(`recommendation:${sessionId}`, 20)) return rateLimitResponse();
   const body = await request.json().catch(() => ({}));
   const parsedInput = recommendationInputSchema.safeParse(body);
   if (!parsedInput.success) return NextResponse.json({ error: "Invalid recommendation input" }, { status: 400 });
@@ -16,6 +18,7 @@ export async function POST(request: Request) {
   const history = snapshot.history.map((event) => ({ replacementId: event.replacementId, helpful: event.helpful }));
   const context = parsedInput.data.context;
   if (hasHighRiskContext(context)) return NextResponse.json({ safety: "review", route: "support" }, { status: 200 });
+  if (hasUnsupportedContext(context)) return NextResponse.json({ safety: "review", route: "specialized" }, { status: 200 });
   let source: "gemini" | "fallback" = "fallback";
   let recommendation = deterministicFallback(replacements, history);
   const apiKey = process.env.GEMINI_API_KEY;
