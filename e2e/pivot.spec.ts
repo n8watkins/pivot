@@ -141,9 +141,16 @@ test("network failure uses a visible deterministic fallback", async ({ page }) =
 test("settings exposes pivot, account, and privacy controls", async ({ page }) => {
   await page.goto("/settings");
   await expect(page.getByRole("heading", { name: "Settings" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Anonymous for now" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Anonymous by default" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /GitHub sign-in needs configuration/ })).toBeDisabled();
   await expect(page.getByRole("button", { name: "Delete all my data" })).toBeVisible();
   await expect(page.getByRole("link", { name: /Add pivot/ })).toBeVisible();
+});
+
+test("account status remains available when GitHub OAuth is not configured", async ({ request }) => {
+  const response = await request.get("/api/account");
+  expect(response.ok()).toBeTruthy();
+  await expect(response.json()).resolves.toEqual({ configured: false, authenticated: false });
 });
 
 test("settings can edit, reorder, and delete a pivot", async ({ page }) => {

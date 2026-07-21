@@ -2,6 +2,8 @@ import { createClient, type Client } from "@libsql/client";
 import { cookies } from "next/headers";
 import { randomUUID } from "node:crypto";
 import { migrate } from "./migrations";
+import { auth, isAuthConfigured } from "@/auth";
+import { linkGitHubAccount } from "./account";
 
 export const SESSION_COOKIE = "pivot_session";
 let client: Client | null = null;
@@ -29,7 +31,27 @@ export async function ensureSession() {
     await initializeDatabase();
     await db.execute({ sql: "INSERT OR IGNORE INTO anonymous_sessions (id, created_at) VALUES (?, ?)", args: [id, new Date().toISOString()] });
   } else if (!memorySessions.has(id)) memorySessions.set(id, { id, createdAt: new Date().toISOString() });
-  return id;
+  if (!db || !isAuthConfigured) return id;
+  const accountSession = await auth().catch(() => null);
+  const githubId = accountSession?.user?.githubId;
+  if (!githubId) return id;
+  const login = accountSession.user.githubLogin || accountSession.user.name || "GitHub user";
+  const avatar = accountSession.user.image ?? null;
+  const linked = await linkGitHubAccount(db, id, { id: githubId, login, avatarUrl: avatar });
+  if (linked.sessionId !== id) cookieStore.set(SESSION_COOKIE, linked.sessionId, { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production" && process.env.COOKIE_SECURE !== "false", maxAge: 60 * 60 * 24 * 365, path: "/" });
+  return linked.sessionId;
+}
+
+export async function leaveAccountSession() {
+  const cookieStore = await cookies();
+  const id = randomUUID();
+  const now = new Date().toISOString();
+  const db = getDatabase();
+  if (db) {
+    await initializeDatabase();
+    await db.execute({ sql: "INSERT INTO anonymous_sessions (id, created_at) VALUES (?, ?)", args: [id, now] });
+  } else memorySessions.set(id, { id, createdAt: now });
+  cookieStore.set(SESSION_COOKIE, id, { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production" && process.env.COOKIE_SECURE !== "false", maxAge: 60 * 60 * 24 * 365, path: "/" });
 }
 
 export async function recordEvent(type: string, payload: Record<string, unknown>) {
@@ -63,6 +85,7 @@ export async function deleteSession() {
       "DELETE FROM pivots WHERE session_id = ?",
       "DELETE FROM context_tags WHERE session_id = ?",
       "DELETE FROM privacy_events WHERE session_id = ?",
+      "DELETE FROM accounts WHERE canonical_session_id = ?",
       "DELETE FROM anonymous_sessions WHERE id = ?",
     ].map((sql) => ({ sql, args: [id] })), "write");
   }

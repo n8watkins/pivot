@@ -51,6 +51,16 @@ const migrations = [
       "CREATE INDEX IF NOT EXISTS idx_context_tags_session ON context_tags(session_id)",
     ],
   },
+  {
+    version: 6,
+    statements: [
+      "CREATE TABLE IF NOT EXISTS accounts (id TEXT PRIMARY KEY, provider TEXT NOT NULL, provider_account_id TEXT NOT NULL, login TEXT NOT NULL, avatar_url TEXT, canonical_session_id TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)",
+      "CREATE UNIQUE INDEX IF NOT EXISTS idx_accounts_provider_identity ON accounts(provider, provider_account_id)",
+      "CREATE UNIQUE INDEX IF NOT EXISTS idx_accounts_canonical_session ON accounts(canonical_session_id)",
+      "ALTER TABLE anonymous_sessions ADD COLUMN account_id TEXT",
+      "CREATE INDEX IF NOT EXISTS idx_anonymous_sessions_account ON anonymous_sessions(account_id)",
+    ],
+  },
 ] as const;
 
 async function hasColumn(db: Client, table: string, column: string) {
