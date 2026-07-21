@@ -32,3 +32,24 @@ test("high-risk context routes away from a normal recommendation", async ({ page
   await page.getByRole("button", { name: /Show me a next step/ }).click();
   await expect(page.getByRole("heading", { name: "This may need more than a pivot." })).toBeVisible();
 });
+
+test("active intervention survives refresh", async ({ page }) => {
+  await page.goto("/");
+  await page.getByLabel("My goal is to stop").pressSequentially("late night scrolling");
+  await page.getByRole("button", { name: /Continue/ }).click();
+  await page.getByRole("button", { name: /I’m having an urge/ }).click();
+  await page.getByRole("button", { name: "Skip and show me something" }).click();
+  await page.getByRole("button", { name: /Start this action/ }).click();
+  await page.waitForTimeout(250);
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Take a short walk" })).toBeVisible();
+});
+
+test("privacy event can be created and deleted for the anonymous session", async ({ request }) => {
+  const created = await request.post("/api/events", { data: { type: "follow_up_completed", payload: { replacementId: "walk", helpful: true } } });
+  expect(created.ok()).toBeTruthy();
+  const eventId = (await created.json()).eventId as string;
+  const deleted = await request.delete(`/api/events?id=${eventId}`);
+  expect(deleted.ok()).toBeTruthy();
+  await expect(deleted.json()).resolves.toEqual({ deleted: true });
+});

@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { deleteEvent, recordEvent } from "@/lib/session";
+import { eventInputSchema } from "@/lib/schemas";
 
 export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}));
-  const type = typeof body.type === "string" ? body.type : "unknown";
-  const payload = body.payload && typeof body.payload === "object" ? body.payload : {};
-  return NextResponse.json({ eventId: await recordEvent(type, payload) });
+  const parsed = eventInputSchema.safeParse(body);
+  if (!parsed.success) return NextResponse.json({ error: "Invalid event" }, { status: 400 });
+  return NextResponse.json({ eventId: await recordEvent(parsed.data.type, parsed.data.payload) });
 }
 
 export async function DELETE(request: Request) {

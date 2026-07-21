@@ -1,17 +1,22 @@
 import { NextResponse } from "next/server";
 import { deterministicFallback, hasHighRiskContext, parseRecommendation, type ReplacementOption } from "@/lib/recommendation";
-import { ensureSession } from "@/lib/session";
-
-const inputSchema = { replacements: Array.isArray };
+import { ensureSession, getDatabase } from "@/lib/session";
+import { getSnapshot } from "@/lib/domain";
+import { recommendationInputSchema } from "@/lib/schemas";
 
 export async function POST(request: Request) {
   await ensureSession();
   const body = await request.json().catch(() => ({}));
-  const replacements = (body.replacements ?? []) as ReplacementOption[];
-  const context = String(body.context ?? "");
-  if (!inputSchema.replacements(replacements) || replacements.length === 0) return NextResponse.json({ error: "At least one replacement is required" }, { status: 400 });
+  const parsedInput = recommendationInputSchema.safeParse(body);
+  if (!parsedInput.success) return NextResponse.json({ error: "Invalid recommendation input" }, { status: 400 });
+  const snapshot = await getSnapshot();
+  if (getDatabase() && snapshot.replacements.length === 0) return NextResponse.json({ error: "Complete setup before requesting a recommendation" }, { status: 409 });
+  const replacements = (snapshot.replacements.length ? snapshot.replacements : parsedInput.data.replacements) as ReplacementOption[];
+  const history = snapshot.history.map((event) => ({ replacementId: event.replacementId, helpful: event.helpful }));
+  const context = parsedInput.data.context;
   if (hasHighRiskContext(context)) return NextResponse.json({ safety: "review", route: "support" }, { status: 200 });
-  let recommendation = deterministicFallback(replacements);
+  let source: "gemini" | "fallback" = "fallback";
+  let recommendation = deterministicFallback(replacements, history);
   const apiKey = process.env.GEMINI_API_KEY;
   if (apiKey) {
     try {
@@ -19,8 +24,8 @@ export async function POST(request: Request) {
       const payload = await response.json();
       const raw = payload?.candidates?.[0]?.content?.parts?.[0]?.text;
       const parsed = raw ? parseRecommendation(JSON.parse(raw), replacements) : null;
-      if (parsed) recommendation = parsed;
+      if (parsed) { recommendation = parsed; source = "gemini"; }
     } catch { /* Deterministic fallback is the intended failure mode. */ }
   }
-  return NextResponse.json({ ...recommendation, source: apiKey ? "gemini-or-fallback" : "fallback" });
+  return NextResponse.json({ ...recommendation, source });
 }
