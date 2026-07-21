@@ -76,6 +76,14 @@ test("urge context accepts a custom tag", async ({ page }) => {
   await expect(page.getByRole("button", { name: "lonely" })).toHaveClass(/active/);
 });
 
+test("settings exposes pivot, account, and privacy controls", async ({ page }) => {
+  await page.goto("/settings");
+  await expect(page.getByRole("heading", { name: "Settings" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Anonymous for now" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Delete all my data" })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Add pivot/ })).toBeVisible();
+});
+
 test("privacy event can be created and deleted for the anonymous session", async ({ request }) => {
   const created = await request.post("/api/events", { data: { type: "follow_up_completed", payload: { replacementId: "walk", helpful: true } } });
   expect(created.ok()).toBeTruthy();
