@@ -72,6 +72,14 @@ const migrations = [
       "CREATE INDEX IF NOT EXISTS idx_active_interventions_pivot ON active_interventions(pivot_id)",
     ],
   },
+  {
+    version: 8,
+    statements: [
+      "ALTER TABLE active_interventions ADD COLUMN reason TEXT NOT NULL DEFAULT ''",
+      "ALTER TABLE active_interventions ADD COLUMN first_step TEXT NOT NULL DEFAULT ''",
+      "ALTER TABLE active_interventions ADD COLUMN source TEXT NOT NULL DEFAULT 'fallback'",
+    ],
+  },
 ] as const;
 
 async function hasColumn(db: Client, table: string, column: string) {

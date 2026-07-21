@@ -16,7 +16,7 @@ export function ReplacementIcon({ name }: { name: string }) {
 }
 
 export function Header({ onHistory, onReset }: { onHistory: () => void; onReset: () => void }) {
-  return <header className="site-header"><a className="brand" href="#" onClick={(event) => { event.preventDefault(); onReset(); }}><Logo /><span>pivot</span></a><nav className="header-nav" aria-label="Main navigation"><button className="text-button" onClick={onHistory}>History <span aria-hidden="true">↗</span></button><Link className="text-button" href="/settings">Settings <span aria-hidden="true">↗</span></Link></nav></header>;
+  return <header className="site-header"><button type="button" className="brand brand-button" onClick={onReset}><Logo /><span>pivot</span></button><nav className="header-nav" aria-label="Main navigation"><button type="button" className="text-button" onClick={onHistory}>History <span aria-hidden="true">↗</span></button><Link className="text-button" href="/settings">Settings <span aria-hidden="true">↗</span></Link></nav></header>;
 }
 
 export function Progress({ step, total = 3 }: { step: number; total?: number }) {

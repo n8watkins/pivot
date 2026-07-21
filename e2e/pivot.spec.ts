@@ -129,6 +129,8 @@ test("structured recommendation controls reason, first step, and alternatives", 
   await expect(page.locator(".alternative strong")).toHaveText(["Stretch your shoulders", "Take a short walk"]);
   await page.getByRole("button", { name: /Start this action/ }).click();
   await expect(page.getByText("Put both feet on the floor.")).toBeVisible();
+  await page.reload();
+  await expect(page.getByText("Put both feet on the floor.")).toBeVisible();
 });
 
 test("choosing an alternative starts that exact action", async ({ page }) => {
@@ -253,7 +255,8 @@ test("anonymous session deletion removes pivot state", async ({ request }) => {
 });
 
 test("data export contains the user's structured data and attachment headers", async ({ request }) => {
-  const saved = await request.post("/api/state", { data: { pivots: [{ id: "pivot-export-test", goal: "afternoon snacking", replacements: [{ id: "water", name: "Make a glass of water", detail: "A reset", duration: "3 min" }] }] } });
+  const pivotId = `pivot-export-${crypto.randomUUID()}`;
+  const saved = await request.post("/api/state", { data: { pivots: [{ id: pivotId, goal: "afternoon snacking", replacements: [{ id: "water", name: "Make a glass of water", detail: "A reset", duration: "3 min" }] }] } });
   expect(saved.ok()).toBeTruthy();
   const response = await request.get("/api/export");
   expect(response.ok()).toBeTruthy();
@@ -261,12 +264,23 @@ test("data export contains the user's structured data and attachment headers", a
   const exported = await response.json();
   expect(exported.pivots[0].goal).toBe("afternoon snacking");
   expect(JSON.stringify(exported)).not.toContain("contextNote");
+  expect((await request.delete("/api/session")).ok()).toBeTruthy();
 });
 
 test("health endpoint reports the SQLite runtime without secrets", async ({ request }) => {
   const response = await request.get("/api/health");
   expect(response.ok()).toBeTruthy();
   await expect(response.json()).resolves.toMatchObject({ status: "ok", persistence: "sqlite", persistentStorageReady: true });
+});
+
+test("narrow and reduced-motion layouts remain usable without horizontal overflow", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 568 });
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/onboarding");
+  await expect(page.getByRole("heading", { name: "What would you like to pivot away from?" })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+  const reducedTransition = await page.locator(".progress-track i").evaluate((element) => Number.parseFloat(getComputedStyle(element).transitionDuration));
+  expect(reducedTransition).toBeLessThanOrEqual(0.001);
 });
 
 test("security headers are present", async ({ request }) => {

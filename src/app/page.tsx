@@ -54,7 +54,7 @@ export default function Home() {
     let cancelled = false;
     void fetch("/api/state")
       .then((response) => response.ok ? response.json() : null)
-      .then((snapshot: { goal?: string; goals?: string[]; replacements?: Omit<Replacement, "icon">[]; pivots?: { id: string; goal: string; replacements: Omit<Replacement, "icon">[] }[]; contextTags?: string[]; history?: HistoryEvent[]; active?: { pivotId?: string; replacementId: string; startedAt: string } } | null) => {
+      .then((snapshot: { goal?: string; goals?: string[]; replacements?: Omit<Replacement, "icon">[]; pivots?: { id: string; goal: string; replacements: Omit<Replacement, "icon">[] }[]; contextTags?: string[]; history?: HistoryEvent[]; active?: { pivotId?: string; replacementId: string; reason?: string; firstStep?: string; source?: "gemini" | "fallback"; startedAt: string } } | null) => {
         if (cancelled || !snapshot) return;
         const serverPivots = snapshot.pivots?.map((pivot) => ({
           ...pivot,
@@ -74,6 +74,8 @@ export default function Home() {
         setCustomContexts(snapshot.contextTags ?? []);
         if (snapshot.active?.replacementId && recoveredPivotId) {
           setModelPrimaryId(snapshot.active.replacementId);
+          setRecommendation({ replacementId: snapshot.active.replacementId, reason: snapshot.active.reason || "This is one of your approved actions.", firstStep: snapshot.active.firstStep || "Begin with one small step.", alternatives: [], source: snapshot.active.source ?? "fallback" });
+          setRecommendationSource(snapshot.active.source ?? "fallback");
           setActiveStartedAt(snapshot.active.startedAt);
           setScreen("active");
         }
@@ -140,14 +142,19 @@ export default function Home() {
     if (!activePivot || isStarting) return;
     setIsStarting(true);
     setFlowError("");
+    const chosenMatchesRecommendation = recommendation?.replacementId === item.id;
+    const chosenFirstStep = chosenMatchesRecommendation ? recommendation.firstStep : item.id === "walk" ? "Put on your shoes and step outside." : item.id === "breathe" ? "Drop your shoulders. Breathe in for 4, out for 6." : `Begin with 30 seconds of ${item.name.toLowerCase()}.`;
+    const chosenReason = chosenMatchesRecommendation ? recommendation.reason : item.detail;
+    const chosenSource = chosenMatchesRecommendation ? recommendation.source : "fallback";
     const response = await fetch("/api/intervention", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ pivotId: activePivot.id, replacementId: item.id }),
+      body: JSON.stringify({ pivotId: activePivot.id, replacementId: item.id, reason: chosenReason, firstStep: chosenFirstStep, source: chosenSource }),
     }).catch(() => null);
     const payload = response?.ok ? await response.json().catch(() => null) : null;
     if (!response?.ok) setFlowError("This action could not be saved for refresh recovery, but you can still continue with it.");
-    if (recommendation?.replacementId !== item.id) setRecommendationSource("fallback");
+    setRecommendation({ replacementId: item.id, reason: chosenReason, firstStep: chosenFirstStep, alternatives: [], source: chosenSource });
+    setRecommendationSource(chosenSource);
     setModelPrimaryId(item.id);
     setTimerRemaining(null);
     setActiveStartedAt(payload?.active?.startedAt ?? new Date().toISOString());
@@ -230,16 +237,6 @@ export default function Home() {
     const response = await fetch(`/api/history/${id}`, { method: "DELETE" }).catch(() => null);
     if (response?.ok) setHistory((current) => current.filter((item) => item.id !== id));
     else setFlowError("That History entry could not be deleted.");
-  }
-
-  async function deleteLocalData() {
-    const response = await fetch("/api/session", { method: "DELETE" }).catch(() => null);
-    if (!response?.ok) {
-      setFlowError("Your data could not be deleted. Please try again.");
-      return;
-    }
-    localStorage.removeItem("pivot-state");
-    window.location.href = "/onboarding";
   }
 
   return (
@@ -410,7 +407,7 @@ export default function Home() {
               </div>
             ) : <div className="empty-state">{historyFilter === "all" ? "Your first entry will appear here after a pivot." : "No check-ins for this pivot yet."}</div>}
             <button className="primary-button full" onClick={() => setScreen("home")}>Back to pause space</button>
-            <button className="danger-button" onClick={deleteLocalData}>Delete my local data</button>
+            <Link className="quiet-button history-settings-link" href="/settings">Manage export and deletion in Settings</Link>
           </section>
         )}
 

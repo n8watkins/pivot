@@ -46,9 +46,18 @@ export const closedLoopInputSchema = z.object({
 export const interventionInputSchema = z.object({
   pivotId: z.string().regex(/^[a-z0-9-]{2,80}$/),
   replacementId: z.string().regex(/^[a-z0-9-]{2,40}$/),
+  reason: z.string().max(180).default(""),
+  firstStep: z.string().max(240).default(""),
+  source: z.enum(["gemini", "fallback"]).default("fallback"),
 });
+
+const analyticsPayloadSchema = z.object({
+  pivotId: z.string().regex(/^[a-z0-9-]{2,80}$/).optional(),
+  replacementId: z.string().regex(/^[a-z0-9-]{2,40}$/).optional(),
+  helpful: z.boolean().optional(),
+}).strict();
 
 export const eventInputSchema = z.object({
   type: z.enum(["follow_up_completed", "active_intervention_started", "recommendation_rejected"]),
-  payload: z.record(z.string(), z.unknown()).default({}),
+  payload: analyticsPayloadSchema.default({}),
 });

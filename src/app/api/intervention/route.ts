@@ -10,5 +10,5 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}));
   const parsed = interventionInputSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: "Pivot and replacement are required" }, { status: 400 });
-  try { return NextResponse.json({ active: await startIntervention(parsed.data.replacementId, parsed.data.pivotId) }); } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Could not start intervention" }, { status: 400 }); }
+  try { return NextResponse.json({ active: await startIntervention(parsed.data) }); } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Could not start intervention" }, { status: 400 }); }
 }

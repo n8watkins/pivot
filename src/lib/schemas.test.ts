@@ -23,5 +23,6 @@ describe("server input contracts", () => {
   it("allows only known privacy event types", () => {
     expect(eventInputSchema.safeParse({ type: "follow_up_completed", payload: {} }).success).toBe(true);
     expect(eventInputSchema.safeParse({ type: "free_text_dump", payload: {} }).success).toBe(false);
+    expect(eventInputSchema.safeParse({ type: "follow_up_completed", payload: { context: "private note" } }).success).toBe(false);
   });
 });

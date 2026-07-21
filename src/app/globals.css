@@ -94,6 +94,12 @@ textarea {
   text-decoration: none;
 }
 
+.brand-button {
+  border: 0;
+  background: none;
+  padding: 0;
+}
+
 .logo-mark {
   display: grid;
   width: 28px;
@@ -300,6 +306,7 @@ h1 {
 }
 
 .goal-add-row .text-input {
+  min-width: 0;
   flex: 1;
 }
 
@@ -1045,6 +1052,12 @@ h1 {
   background: none;
   color: var(--muted);
   font-size: 18px;
+}
+
+.history-settings-link {
+  display: block;
+  margin-top: 12px;
+  text-align: center;
 }
 
 .empty-state {
