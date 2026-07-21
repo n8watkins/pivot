@@ -108,6 +108,27 @@ test("switching pivots uses the selected pivot replacement set", async ({ page }
   await expect(page.getByRole("heading", { name: "Read one page" })).toBeVisible();
 });
 
+test("structured recommendation controls reason, first step, and alternatives", async ({ page }) => {
+  await createBasicPivot(page);
+  await page.route("**/api/recommendation", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ replacementId: "breathe", reason: "Fits a quiet indoor moment.", firstStep: "Put both feet on the floor.", alternatives: ["stretch", "walk"], safety: "safe", source: "gemini" }) }));
+  await page.getByRole("button", { name: /I’m having an urge/ }).click();
+  await page.getByRole("button", { name: "Skip and show me something" }).click();
+  await expect(page.getByRole("heading", { name: "Slow breathing" })).toBeVisible();
+  await expect(page.getByText("Fits a quiet indoor moment.")).toBeVisible();
+  await expect(page.locator(".alternative strong")).toHaveText(["Stretch your shoulders", "Take a short walk"]);
+  await page.getByRole("button", { name: /Start this action/ }).click();
+  await expect(page.getByText("Put both feet on the floor.")).toBeVisible();
+});
+
+test("network failure uses a visible deterministic fallback", async ({ page }) => {
+  await createBasicPivot(page);
+  await page.route("**/api/recommendation", (route) => route.abort());
+  await page.getByRole("button", { name: /I’m having an urge/ }).click();
+  await page.getByRole("button", { name: "Skip and show me something" }).click();
+  await expect(page.getByRole("heading", { name: "Take a short walk" })).toBeVisible();
+  await expect(page.getByRole("status")).toContainText("safe approved action locally");
+});
+
 test("settings exposes pivot, account, and privacy controls", async ({ page }) => {
   await page.goto("/settings");
   await expect(page.getByRole("heading", { name: "Settings" })).toBeVisible();
