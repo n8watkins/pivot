@@ -7,8 +7,10 @@
   },
   "scripts": {
     "dev": "next dev",
+    "dev:sqlite": "node scripts/run-local-sqlite.mjs dev",
     "build": "next build",
     "start": "next start",
+    "start:sqlite": "node scripts/run-local-sqlite.mjs start",
     "lint": "eslint",
     "test": "vitest run",
     "test:e2e": "playwright test"
