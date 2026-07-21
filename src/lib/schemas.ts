@@ -28,10 +28,11 @@ export const pivotsInputSchema = z.array(pivotInputSchema).min(1).superRefine((v
 export const recommendationInputSchema = z.object({
   replacements: z.array(replacementInputSchema).min(1),
   context: z.string().max(500).default(""),
-  pivotId: z.string().max(80).optional(),
+  pivotId: z.string().regex(/^[a-z0-9-]{2,80}$/),
 });
 
 export const closedLoopInputSchema = z.object({
+  pivotId: z.string().regex(/^[a-z0-9-]{2,80}$/),
   replacementId: z.string().regex(/^[a-z0-9-]{2,40}$/),
   intensity: z.number().int().min(1).max(10),
   contextType: z.string().max(80).default(""),
@@ -40,6 +41,11 @@ export const closedLoopInputSchema = z.object({
   source: z.enum(["gemini", "fallback"]),
   outcome: z.string().trim().min(1).max(120),
   helpful: z.boolean(),
+});
+
+export const interventionInputSchema = z.object({
+  pivotId: z.string().regex(/^[a-z0-9-]{2,80}$/),
+  replacementId: z.string().regex(/^[a-z0-9-]{2,40}$/),
 });
 
 export const eventInputSchema = z.object({

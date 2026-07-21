@@ -61,6 +61,17 @@ const migrations = [
       "CREATE INDEX IF NOT EXISTS idx_anonymous_sessions_account ON anonymous_sessions(account_id)",
     ],
   },
+  {
+    version: 7,
+    statements: [
+      "ALTER TABLE urge_sessions ADD COLUMN pivot_id TEXT",
+      "ALTER TABLE urge_sessions ADD COLUMN pivot_label TEXT NOT NULL DEFAULT ''",
+      "ALTER TABLE active_interventions ADD COLUMN pivot_id TEXT",
+      "ALTER TABLE recommendations ADD COLUMN replacement_label TEXT NOT NULL DEFAULT ''",
+      "CREATE INDEX IF NOT EXISTS idx_urge_sessions_pivot ON urge_sessions(pivot_id)",
+      "CREATE INDEX IF NOT EXISTS idx_active_interventions_pivot ON active_interventions(pivot_id)",
+    ],
+  },
 ] as const;
 
 async function hasColumn(db: Client, table: string, column: string) {

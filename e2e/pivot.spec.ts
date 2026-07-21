@@ -21,6 +21,8 @@ test("new user can complete a pivot and review history", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Take a short walk" })).toBeVisible();
   await page.getByRole("button", { name: /I’m done for now/ }).click();
   await page.getByRole("button", { name: "Much lighter" }).click();
+  await page.getByRole("button", { name: "Yes, it helped" }).click();
+  await expect(page.getByRole("status")).toContainText("Check-in saved");
   await page.getByRole("button", { name: /History/ }).click();
   await expect(page.getByRole("heading", { name: "Small moments count." })).toBeVisible();
   await expect(page.getByText("Take a short walk")).toBeVisible();
@@ -129,6 +131,16 @@ test("structured recommendation controls reason, first step, and alternatives", 
   await expect(page.getByText("Put both feet on the floor.")).toBeVisible();
 });
 
+test("choosing an alternative starts that exact action", async ({ page }) => {
+  await createBasicPivot(page);
+  await page.route("**/api/recommendation", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ replacementId: "breathe", reason: "Fits a quiet indoor moment.", firstStep: "Put both feet on the floor.", alternatives: ["stretch", "walk"], safety: "safe", source: "gemini" }) }));
+  await page.getByRole("button", { name: /I’m having an urge/ }).click();
+  await page.getByRole("button", { name: "Skip and show me something" }).click();
+  await page.getByRole("button", { name: /Stretch your shoulders/ }).click();
+  await expect(page.getByRole("heading", { name: "Stretch your shoulders" })).toBeVisible();
+  await expect(page.getByText("Begin with 30 seconds of stretch your shoulders.")).toBeVisible();
+});
+
 test("network failure uses a visible deterministic fallback", async ({ page }) => {
   await createBasicPivot(page);
   await page.route("**/api/recommendation", (route) => route.abort());
@@ -185,11 +197,41 @@ test("individual History entries can be deleted", async ({ page }) => {
   await page.getByRole("button", { name: "Skip and show me something" }).click();
   await page.getByRole("button", { name: /Start this action/ }).click();
   await page.getByRole("button", { name: /I’m done for now/ }).click();
-  await Promise.all([page.waitForResponse("**/api/closed-loop"), page.getByRole("button", { name: "Much lighter" }).click()]);
+  await page.getByRole("button", { name: "Much lighter" }).click();
+  await Promise.all([page.waitForResponse("**/api/closed-loop"), page.getByRole("button", { name: "Yes, it helped" }).click()]);
   await page.reload();
   await page.getByRole("button", { name: /History/ }).click();
   await page.getByRole("button", { name: /Delete Take a short walk History entry/ }).click();
   await expect(page.getByText("Your first entry will appear here after a pivot.")).toBeVisible();
+});
+
+test("History keeps its pivot and action labels after that pivot is deleted", async ({ page }) => {
+  await createBasicPivot(page, "evening snacking");
+  await page.getByRole("button", { name: /I’m having an urge/ }).click();
+  await page.getByRole("button", { name: "Skip and show me something" }).click();
+  await page.getByRole("button", { name: /Start this action/ }).click();
+  await page.getByRole("button", { name: /I’m done for now/ }).click();
+  await page.getByRole("button", { name: "About the same" }).click();
+  await page.getByRole("button", { name: "Not this time" }).click();
+  await page.goto("/settings");
+  await page.getByRole("link", { name: "Edit evening snacking" }).click();
+  page.once("dialog", (dialog) => dialog.accept());
+  await page.getByRole("button", { name: "Delete this pivot" }).click();
+  await page.goto("/");
+  await page.getByRole("button", { name: /History/ }).click();
+  await expect(page.getByText("Take a short walk")).toBeVisible();
+  await expect(page.getByText(/evening snacking · About the same/)).toBeVisible();
+});
+
+test("lapse recovery is recorded without judgment", async ({ page }) => {
+  await createBasicPivot(page);
+  await page.getByRole("button", { name: /I’m having an urge/ }).click();
+  await page.getByRole("button", { name: "Skip and show me something" }).click();
+  await page.getByRole("button", { name: /Start this action/ }).click();
+  await page.getByRole("button", { name: /I’m done for now/ }).click();
+  await page.getByRole("button", { name: "I went back to it" }).click();
+  await page.getByRole("button", { name: "Not this time" }).click();
+  await expect(page.getByRole("status")).toContainText("Recorded without judgment");
 });
 
 test("privacy event can be created and deleted for the anonymous session", async ({ request }) => {
