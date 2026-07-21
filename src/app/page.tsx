@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { replacements, type Replacement } from "@/components/pivot/data";
 import { Header, Progress, ReplacementIcon } from "@/components/pivot/ui";
+import { fallbackFirstStep } from "@/lib/replacement-copy";
 
 type Screen = "home" | "urge" | "recommendation" | "active" | "followup" | "history" | "safety";
 type Pivot = { id: string; goal: string; replacements: Replacement[] };
@@ -91,7 +92,7 @@ export default function Home() {
   const primary = approved.find((item) => item.id === (modelPrimaryId ?? recommendation?.replacementId)) ?? approved[0] ?? replacements[0];
   const alternatives = recommendation ? recommendation.alternatives.map((id) => approved.find((item) => item.id === id)).filter((item): item is Replacement => Boolean(item)) : approved.slice(1, 3);
   const recommendationMatchesPrimary = recommendation?.replacementId === primary.id;
-  const firstStep = recommendationMatchesPrimary ? recommendation.firstStep : primary.id === "walk" ? "Put on your shoes and step outside." : primary.id === "breathe" ? "Drop your shoulders. Breathe in for 4, out for 6." : `Begin with 30 seconds of ${primary.name.toLowerCase()}.`;
+  const firstStep = recommendationMatchesPrimary ? recommendation.firstStep : fallbackFirstStep(primary);
   const timerDuration = durationInSeconds(primary.duration);
   const timerProgress = timerDuration && timerRemaining !== null ? Math.max(0, Math.min(100, ((timerDuration - timerRemaining) / timerDuration) * 100)) : 0;
   const historyPivots = useMemo(() => Array.from(new Map(history.filter((event) => event.pivotId).map((event) => [event.pivotId!, event.pivotGoal || "Past pivot"]))).map(([id, label]) => ({ id, label })), [history]);
@@ -113,7 +114,7 @@ export default function Home() {
     const fallback: RecommendationResult = {
       replacementId: approved[0].id,
       reason: "It is an approved option that can change the shape of this moment.",
-      firstStep: `Begin with 30 seconds of ${approved[0].name.toLowerCase()}.`,
+      firstStep: fallbackFirstStep(approved[0]),
       alternatives: approved.slice(1, 3).map((item) => item.id),
       source: "fallback",
     };
@@ -143,7 +144,7 @@ export default function Home() {
     setIsStarting(true);
     setFlowError("");
     const chosenMatchesRecommendation = recommendation?.replacementId === item.id;
-    const chosenFirstStep = chosenMatchesRecommendation ? recommendation.firstStep : item.id === "walk" ? "Put on your shoes and step outside." : item.id === "breathe" ? "Drop your shoulders. Breathe in for 4, out for 6." : `Begin with 30 seconds of ${item.name.toLowerCase()}.`;
+    const chosenFirstStep = chosenMatchesRecommendation ? recommendation.firstStep : fallbackFirstStep(item);
     const chosenReason = chosenMatchesRecommendation ? recommendation.reason : item.detail;
     const chosenSource = chosenMatchesRecommendation ? recommendation.source : "fallback";
     const response = await fetch("/api/intervention", {
@@ -242,7 +243,7 @@ export default function Home() {
   return (
     <main className="app-shell">
       <div className="app-frame">
-        <Header onHistory={() => { setHistoryFilter("all"); setScreen("history"); }} onReset={reset} />
+        <Header focusLabel={screen === "active" ? "Action in progress" : screen === "followup" ? "Check-in in progress" : undefined} onHistory={() => { setHistoryFilter("all"); setScreen("history"); }} onReset={reset} />
 
         {screen === "home" && (
           <section className="home-screen">
@@ -296,29 +297,38 @@ export default function Home() {
         )}
 
         {screen === "urge" && (
-          <section className="flow-screen">
+          <section className="flow-screen urge-screen">
             <Progress step={1} total={3} />
             <p className="eyebrow">Right now</p>
             <h1>What’s this moment like?</h1>
             <p className="lede">A little context helps me find a better fit. You can skip this.</p>
-            <div className="chip-row">
-              {["Bored", "Stressed", "Tired", "Avoiding something", "Just automatic", ...customContexts].map((item) => <button className={`chip ${context === item ? "active" : ""}`} key={item} onClick={() => setContext(context === item ? "" : item)}>{item}</button>)}
-            </div>
-            <label className="field-label" htmlFor="custom-context">Add your own tag <span>Optional</span></label>
-            <div className="goal-add-row context-add-row">
-              <input id="custom-context" className="text-input" placeholder="e.g. restless, lonely, procrastinating" value={customContext} onChange={(event) => setCustomContext(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); addContextTag(); } }} />
-              <button className="small-button" onClick={addContextTag} disabled={!customContext.trim()}>Add</button>
-            </div>
-            <label className="field-label" htmlFor="context-note">Anything else on your mind? <span>Optional</span></label>
-            <textarea id="context-note" className="text-input text-area" placeholder="A few words, if useful" value={contextNote} onChange={(event) => setContextNote(event.target.value)} />
-            <p className="private-field-note">This note is used for this recommendation and is not saved to History.</p>
-            <div className="intensity">
-              <div><span className="field-label">How strong is it?</span><strong>{urge} / 10</strong></div>
-              <input type="range" min="1" max="10" value={urge} onChange={(event) => setUrge(Number(event.target.value))} aria-label="Urge intensity" />
+            <div className="urge-input-grid">
+              <div className="urge-context-column">
+                <span className="field-label">What fits this moment?</span>
+                <div className="chip-row">
+                  {["Bored", "Stressed", "Tired", "Avoiding something", "Just automatic", ...customContexts].map((item) => <button className={`chip ${context === item ? "active" : ""}`} key={item} onClick={() => setContext(context === item ? "" : item)}>{item}</button>)}
+                </div>
+                <label className="field-label" htmlFor="custom-context">Add your own tag <span>Optional</span></label>
+                <div className="goal-add-row context-add-row">
+                  <input id="custom-context" className="text-input" placeholder="e.g. restless, lonely, procrastinating" value={customContext} onChange={(event) => setCustomContext(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); addContextTag(); } }} />
+                  <button className="small-button" onClick={addContextTag} disabled={!customContext.trim()}>Add</button>
+                </div>
+              </div>
+              <div className="urge-note-column">
+                <label className="field-label" htmlFor="context-note">Anything else on your mind? <span>Optional</span></label>
+                <textarea id="context-note" className="text-input text-area" placeholder="A few words, if useful" value={contextNote} onChange={(event) => setContextNote(event.target.value)} />
+                <p className="private-field-note">This note is used for this recommendation and is not saved to History.</p>
+                <div className="intensity">
+                  <div><span className="field-label">How strong is it?</span><strong>{urge} / 10</strong></div>
+                  <input type="range" min="1" max="10" value={urge} onChange={(event) => setUrge(Number(event.target.value))} aria-label="Urge intensity" />
+                </div>
+              </div>
             </div>
             {flowError && <p className="form-status" role="status">{flowError}</p>}
-            <button className="primary-button full" disabled={isRecommending} onClick={requestRecommendation}>{isRecommending ? "Finding a next step..." : "Show me a next step"} <span>→</span></button>
-            <button className="quiet-button" disabled={isRecommending} onClick={requestRecommendation}>Skip and show me something</button>
+            <div className="urge-actions">
+              <button className="primary-button full" disabled={isRecommending} onClick={requestRecommendation}>{isRecommending ? "Finding a next step..." : "Show me a next step"} <span>→</span></button>
+              <button className="quiet-button" disabled={isRecommending} onClick={requestRecommendation}>Skip and show me something</button>
+            </div>
           </section>
         )}
 

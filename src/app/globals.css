@@ -83,6 +83,18 @@ textarea {
   gap: 14px;
 }
 
+.focus-mode-label {
+  border: 1px solid #d8e4d8;
+  border-radius: 999px;
+  background: #eef4ed;
+  color: var(--deep-sage);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  padding: 7px 11px;
+  text-transform: uppercase;
+}
+
 .brand {
   display: inline-flex;
   align-items: center;
@@ -763,6 +775,14 @@ h1 {
   margin-bottom: 32px;
 }
 
+.urge-input-grid {
+  display: block;
+}
+
+.urge-actions {
+  display: grid;
+}
+
 .chip-row {
   display: flex;
   flex-wrap: wrap;
@@ -1262,6 +1282,69 @@ h1 {
   .active-screen {
     width: min(100%, 620px);
     margin: 0 auto;
+  }
+
+  .flow-screen {
+    padding-top: 58px;
+  }
+
+  .flow-screen .progress {
+    margin: 24px 0 34px;
+  }
+
+  .urge-screen {
+    width: min(100%, 900px);
+    padding-top: 40px;
+  }
+
+  .urge-screen h1 {
+    max-width: 620px;
+  }
+
+  .urge-screen .lede {
+    margin-bottom: 24px;
+  }
+
+  .urge-input-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+    margin-bottom: 18px;
+  }
+
+  .urge-context-column,
+  .urge-note-column {
+    min-width: 0;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: rgba(255, 255, 255, .78);
+    padding: 20px;
+  }
+
+  .urge-screen .chip-row {
+    margin-bottom: 24px;
+  }
+
+  .urge-screen .context-add-row {
+    margin-bottom: 0;
+  }
+
+  .urge-screen .private-field-note {
+    margin: 6px 0 14px;
+  }
+
+  .urge-screen .intensity {
+    margin: 18px 0 0;
+  }
+
+  .urge-actions {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .urge-actions .quiet-button {
+    padding: 0 14px;
   }
 
   .history-screen,

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { fallbackFirstStep } from "./replacement-copy";
 
 export const recommendationSchema = z.object({
   replacementId: z.string().min(1),
@@ -30,7 +31,7 @@ export function deterministicFallback(options: ReplacementOption[], history: { r
   return {
     replacementId: primary.id,
     reason: "It is an approved option that can change the shape of this moment.",
-    firstStep: `Begin with 30 seconds of ${primary.name.toLowerCase()}.`,
+    firstStep: fallbackFirstStep(primary),
     alternatives: ranked.slice(1, 3).map((option) => option.id),
     safety: "safe",
   };

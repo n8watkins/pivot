@@ -19,7 +19,11 @@ test("new user can complete a pivot and review history", async ({ page }) => {
   await expect(page.getByRole("heading", { name: /Try this for/ })).toBeVisible();
   await page.getByRole("button", { name: /Start this action/ }).click();
   await expect(page.getByRole("heading", { name: "Take a short walk" })).toBeVisible();
+  await expect(page.getByText("Put on your shoes and step outside.")).toBeVisible();
+  await expect(page.getByText("Action in progress")).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Main navigation" })).not.toBeVisible();
   await page.getByRole("button", { name: /I’m done for now/ }).click();
+  await expect(page.getByText("Check-in in progress")).toBeVisible();
   await page.getByRole("button", { name: "Much lighter" }).click();
   await page.getByRole("button", { name: "Yes, it helped" }).click();
   await expect(page.getByRole("status")).toContainText("Check-in saved");
@@ -60,6 +64,17 @@ test("active intervention survives refresh", async ({ page }) => {
   await page.waitForTimeout(250);
   await page.reload();
   await expect(page.getByRole("heading", { name: "Take a short walk" })).toBeVisible();
+});
+
+test("desktop urge actions stay visible without initial scrolling", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await createBasicPivot(page);
+  await page.getByRole("button", { name: /I’m having an urge/ }).click();
+  const action = page.getByRole("button", { name: /Show me a next step/ });
+  await expect(action).toBeVisible();
+  const bounds = await action.boundingBox();
+  expect(bounds).not.toBeNull();
+  expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(900);
 });
 
 test("setup supports multiple goals and a custom replacement", async ({ page }) => {
@@ -140,7 +155,7 @@ test("choosing an alternative starts that exact action", async ({ page }) => {
   await page.getByRole("button", { name: "Skip and show me something" }).click();
   await page.getByRole("button", { name: /Stretch your shoulders/ }).click();
   await expect(page.getByRole("heading", { name: "Stretch your shoulders" })).toBeVisible();
-  await expect(page.getByText("Begin with 30 seconds of stretch your shoulders.")).toBeVisible();
+  await expect(page.getByText("Let your arms hang, then slowly roll your shoulders back once.")).toBeVisible();
 });
 
 test("network failure uses a visible deterministic fallback", async ({ page }) => {

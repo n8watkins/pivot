@@ -15,8 +15,13 @@ export function ReplacementIcon({ name }: { name: string }) {
   return <svg className="replacement-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={paths[name] ?? paths.custom} /></svg>;
 }
 
-export function Header({ onHistory, onReset }: { onHistory: () => void; onReset: () => void }) {
-  return <header className="site-header"><button type="button" className="brand brand-button" onClick={onReset}><Logo /><span>pivot</span></button><nav className="header-nav" aria-label="Main navigation"><button type="button" className="text-button" onClick={onHistory}>History <span aria-hidden="true">↗</span></button><Link className="text-button" href="/settings">Settings <span aria-hidden="true">↗</span></Link></nav></header>;
+export function Header({ focusLabel, onHistory, onReset }: { focusLabel?: string; onHistory: () => void; onReset: () => void }) {
+  return (
+    <header className="site-header">
+      {focusLabel ? <div className="brand"><Logo /><span>pivot</span></div> : <button type="button" className="brand brand-button" onClick={onReset}><Logo /><span>pivot</span></button>}
+      {focusLabel ? <span className="focus-mode-label">{focusLabel}</span> : <nav className="header-nav" aria-label="Main navigation"><button type="button" className="text-button" onClick={onHistory}>History <span aria-hidden="true">↗</span></button><Link className="text-button" href="/settings">Settings <span aria-hidden="true">↗</span></Link></nav>}
+    </header>
+  );
 }
 
 export function Progress({ step, total = 3 }: { step: number; total?: number }) {
