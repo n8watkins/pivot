@@ -11,7 +11,8 @@ export async function POST(request: Request) {
   if (!parsedInput.success) return NextResponse.json({ error: "Invalid recommendation input" }, { status: 400 });
   const snapshot = await getSnapshot();
   if (getDatabase() && snapshot.replacements.length === 0) return NextResponse.json({ error: "Complete setup before requesting a recommendation" }, { status: 409 });
-  const replacements = (snapshot.replacements.length ? snapshot.replacements : parsedInput.data.replacements) as ReplacementOption[];
+  const pivot = parsedInput.data.pivotId ? snapshot.pivots.find((item) => item.id === parsedInput.data.pivotId) : undefined;
+  const replacements = (pivot?.replacements ?? (snapshot.replacements.length ? snapshot.replacements : parsedInput.data.replacements)) as ReplacementOption[];
   const history = snapshot.history.map((event) => ({ replacementId: event.replacementId, helpful: event.helpful }));
   const context = parsedInput.data.context;
   if (hasHighRiskContext(context)) return NextResponse.json({ safety: "review", route: "support" }, { status: 200 });

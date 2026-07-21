@@ -1,12 +1,11 @@
 import { expect, test } from "@playwright/test";
 
 test("new user can complete a pivot and review history", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/onboarding");
   await page.waitForTimeout(500);
-  await page.getByLabel("Add a change").pressSequentially("late night scrolling");
-  await page.getByLabel("Add a change").press("Tab");
-  await expect(page.getByRole("button", { name: /Continue/ })).toBeEnabled();
-  await page.getByRole("button", { name: /Continue/ }).click();
+  await page.getByLabel("Name this pivot").fill("late night scrolling");
+  await page.getByRole("button", { name: /Save.*pivot/ }).click();
+  await page.getByRole("button", { name: /Finish setup/ }).click();
   await expect(page.getByRole("heading", { name: "Ready when you are." })).toBeVisible();
   await page.getByRole("button", { name: /I’m having an urge/ }).click();
   await page.getByRole("button", { name: "Skip and show me something" }).click();
@@ -21,12 +20,11 @@ test("new user can complete a pivot and review history", async ({ page }) => {
 });
 
 test("high-risk context routes away from a normal recommendation", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/onboarding");
   await page.waitForTimeout(500);
-  await page.getByLabel("Add a change").pressSequentially("late night scrolling");
-  await page.getByLabel("Add a change").press("Tab");
-  await expect(page.getByRole("button", { name: /Continue/ })).toBeEnabled();
-  await page.getByRole("button", { name: /Continue/ }).click();
+  await page.getByLabel("Name this pivot").fill("late night scrolling");
+  await page.getByRole("button", { name: /Save.*pivot/ }).click();
+  await page.getByRole("button", { name: /Finish setup/ }).click();
   await page.getByRole("button", { name: /I’m having an urge/ }).click();
   await page.getByLabel(/Anything else on your mind/).fill("I want to hurt myself");
   await page.getByRole("button", { name: /Show me a next step/ }).click();
@@ -34,9 +32,10 @@ test("high-risk context routes away from a normal recommendation", async ({ page
 });
 
 test("active intervention survives refresh", async ({ page }) => {
-  await page.goto("/");
-  await page.getByLabel("Add a change").pressSequentially("late night scrolling");
-  await page.getByRole("button", { name: /Continue/ }).click();
+  await page.goto("/onboarding");
+  await page.getByLabel("Name this pivot").fill("late night scrolling");
+  await page.getByRole("button", { name: /Save.*pivot/ }).click();
+  await page.getByRole("button", { name: /Finish setup/ }).click();
   await page.getByRole("button", { name: /I’m having an urge/ }).click();
   await page.getByRole("button", { name: "Skip and show me something" }).click();
   await page.getByRole("button", { name: /Start this action/ }).click();
@@ -46,26 +45,35 @@ test("active intervention survives refresh", async ({ page }) => {
 });
 
 test("setup supports multiple goals and a custom replacement", async ({ page }) => {
+  await page.goto("/onboarding");
+  await page.getByLabel("Name this pivot").fill("late night scrolling");
+  await page.getByLabel(/Add your own action/).fill("Sketch for five minutes");
+  await page.getByRole("button", { name: "Add" }).click();
+  await page.getByRole("button", { name: /Save.*pivot/ }).click();
+  await page.getByLabel("Name this pivot").fill("checking email");
+  await page.getByLabel(/Add your own action/).fill("Read a page");
+  await page.getByRole("button", { name: "Add" }).click();
+  await page.getByRole("button", { name: /Save this pivot/ }).click();
+  await expect(page.getByText("late night scrolling")).toBeVisible();
+  await expect(page.getByText("checking email")).toBeVisible();
+  await page.getByRole("button", { name: /Finish setup/ }).click();
+  await expect(page.getByText("late night scrolling")).toBeVisible();
+  await expect(page.getByRole("button", { name: "checking email" })).toBeVisible();
+});
+
+test("main route does not render onboarding", async ({ page }) => {
   await page.goto("/");
-  const goalInput = page.getByLabel("Add a change");
-  await goalInput.pressSequentially("late night scrolling");
-  await page.getByRole("button", { name: "Add" }).nth(0).click();
-  await goalInput.pressSequentially("checking email");
-  await page.getByRole("button", { name: "Add" }).nth(0).click();
-  await goalInput.pressSequentially("skipping meals");
-  await page.getByRole("button", { name: "Add" }).nth(0).click();
-  await goalInput.pressSequentially("avoiding hard conversations");
-  await page.getByRole("button", { name: "Add" }).nth(0).click();
-  await page.getByLabel(/Add your own action/).pressSequentially("Sketch for five minutes");
-  await page.getByRole("button", { name: "Add" }).nth(1).click();
-  await page.getByLabel(/Add your own action/).pressSequentially("Read a page");
-  await page.getByRole("button", { name: "Add" }).nth(1).click();
-  await page.getByLabel(/Add your own action/).pressSequentially("Call a friend");
-  await page.getByRole("button", { name: "Add" }).nth(1).click();
-  await expect(page.getByRole("button", { name: /Sketch for five minutes/ })).toBeVisible();
-  await expect(page.getByRole("button", { name: /Call a friend/ })).toBeVisible();
-  await page.getByRole("button", { name: /Continue/ }).click();
-  await expect(page.getByText("late night scrolling · checking email · skipping meals · avoiding hard conversations")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Ready when you are." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "What would you like to pivot away from?" })).not.toBeVisible();
+  await expect(page.getByRole("link", { name: /Set up your first pivot/ })).toBeVisible();
+});
+
+test("urge context accepts a custom tag", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: /I’m having an urge/ }).click();
+  await page.getByLabel("Add your own tag").fill("lonely");
+  await page.getByRole("button", { name: "Add" }).click();
+  await expect(page.getByRole("button", { name: "lonely" })).toHaveClass(/active/);
 });
 
 test("privacy event can be created and deleted for the anonymous session", async ({ request }) => {

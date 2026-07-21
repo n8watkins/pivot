@@ -33,6 +33,17 @@ const migrations = [
       "ALTER TABLE active_interventions ADD COLUMN replacement_id TEXT NOT NULL DEFAULT ''",
     ],
   },
+  {
+    version: 4,
+    statements: [
+      "CREATE TABLE IF NOT EXISTS pivots (id TEXT PRIMARY KEY, session_id TEXT NOT NULL, label TEXT NOT NULL, created_at TEXT NOT NULL)",
+      "ALTER TABLE goals ADD COLUMN pivot_id TEXT",
+      "ALTER TABLE replacements ADD COLUMN pivot_id TEXT",
+      "CREATE INDEX IF NOT EXISTS idx_pivots_session ON pivots(session_id)",
+      "CREATE INDEX IF NOT EXISTS idx_goals_pivot ON goals(pivot_id)",
+      "CREATE INDEX IF NOT EXISTS idx_replacements_pivot ON replacements(pivot_id)",
+    ],
+  },
 ] as const;
 
 async function hasColumn(db: Client, table: string, column: string) {

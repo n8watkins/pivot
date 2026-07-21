@@ -23,7 +23,7 @@ export async function ensureSession() {
   const cookieStore = await cookies();
   const existing = cookieStore.get(SESSION_COOKIE)?.value;
   const id = existing ?? randomUUID();
-  if (!existing) cookieStore.set(SESSION_COOKIE, id, { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", maxAge: 60 * 60 * 24 * 365, path: "/" });
+  if (!existing) cookieStore.set(SESSION_COOKIE, id, { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production" && process.env.COOKIE_SECURE !== "false", maxAge: 60 * 60 * 24 * 365, path: "/" });
   const db = getDatabase();
   if (db) {
     await initializeDatabase();
@@ -51,6 +51,7 @@ export async function deleteSession() {
   const id = cookieStore.get(SESSION_COOKIE)?.value;
   if (id && getDatabase()) {
     const db = getDatabase()!;
+    await initializeDatabase();
     await db.batch([
       "DELETE FROM follow_ups WHERE intervention_id IN (SELECT id FROM active_interventions WHERE recommendation_id IN (SELECT id FROM recommendations WHERE urge_session_id IN (SELECT id FROM urge_sessions WHERE session_id = ?)))",
       "DELETE FROM active_interventions WHERE session_id = ?",
@@ -59,6 +60,7 @@ export async function deleteSession() {
       "DELETE FROM urge_sessions WHERE session_id = ?",
       "DELETE FROM replacements WHERE session_id = ?",
       "DELETE FROM goals WHERE session_id = ?",
+      "DELETE FROM pivots WHERE session_id = ?",
       "DELETE FROM privacy_events WHERE session_id = ?",
       "DELETE FROM anonymous_sessions WHERE id = ?",
     ].map((sql) => ({ sql, args: [id] })), "write");

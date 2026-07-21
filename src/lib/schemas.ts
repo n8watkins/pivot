@@ -15,9 +15,20 @@ export const setupInputSchema = z.object({
   if (new Set(value.replacements.map((replacement) => replacement.id)).size !== value.replacements.length) context.addIssue({ code: "custom", path: ["replacements"], message: "Replacement ids must be unique" });
 });
 
+export const pivotInputSchema = z.object({
+  id: z.string().regex(/^[a-z0-9-]{2,80}$/),
+  goal: z.string().trim().min(2).max(120),
+  replacements: z.array(replacementInputSchema).min(1),
+});
+
+export const pivotsInputSchema = z.array(pivotInputSchema).min(1).superRefine((value, context) => {
+  if (new Set(value.map((pivot) => pivot.id)).size !== value.length) context.addIssue({ code: "custom", message: "Pivot ids must be unique" });
+});
+
 export const recommendationInputSchema = z.object({
   replacements: z.array(replacementInputSchema).min(1),
   context: z.string().max(500).default(""),
+  pivotId: z.string().max(80).optional(),
 });
 
 export const closedLoopInputSchema = z.object({
