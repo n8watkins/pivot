@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Pivot - A small next step",
-  description: "A calm pause space for redirecting one unwanted digital habit.",
+  description: "A calm pause space for choosing a different next step when an urge appears.",
 };
 
 export default function RootLayout({

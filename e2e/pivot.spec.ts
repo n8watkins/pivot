@@ -252,6 +252,23 @@ test("anonymous session deletion removes pivot state", async ({ request }) => {
   expect((await (await request.get("/api/state")).json()).pivots).toEqual([]);
 });
 
+test("data export contains the user's structured data and attachment headers", async ({ request }) => {
+  const saved = await request.post("/api/state", { data: { pivots: [{ id: "pivot-export-test", goal: "afternoon snacking", replacements: [{ id: "water", name: "Make a glass of water", detail: "A reset", duration: "3 min" }] }] } });
+  expect(saved.ok()).toBeTruthy();
+  const response = await request.get("/api/export");
+  expect(response.ok()).toBeTruthy();
+  expect(response.headers()["content-disposition"]).toContain("pivot-export-");
+  const exported = await response.json();
+  expect(exported.pivots[0].goal).toBe("afternoon snacking");
+  expect(JSON.stringify(exported)).not.toContain("contextNote");
+});
+
+test("health endpoint reports the SQLite runtime without secrets", async ({ request }) => {
+  const response = await request.get("/api/health");
+  expect(response.ok()).toBeTruthy();
+  await expect(response.json()).resolves.toMatchObject({ status: "ok", persistence: "sqlite", persistentStorageReady: true });
+});
+
 test("security headers are present", async ({ request }) => {
   const response = await request.get("/");
   expect(response.headers()["x-content-type-options"]).toBe("nosniff");

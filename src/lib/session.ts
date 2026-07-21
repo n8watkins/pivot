@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import { migrate } from "./migrations";
 import { auth, isAuthConfigured } from "@/auth";
 import { linkGitHubAccount } from "./account";
+import { getRuntimeCapabilities } from "./config";
 
 export const SESSION_COOKIE = "pivot_session";
 let client: Client | null = null;
@@ -12,6 +13,7 @@ const memoryEvents = new Map<string, { id: string; sessionId: string; type: stri
 
 export function getDatabase() {
   if (!client && process.env.TURSO_DATABASE_URL) client = createClient({ url: process.env.TURSO_DATABASE_URL, ...(process.env.TURSO_AUTH_TOKEN ? { authToken: process.env.TURSO_AUTH_TOKEN } : {}) });
+  if (!client && !getRuntimeCapabilities().persistentStorageReady) throw new Error("TURSO_DATABASE_URL is required in production so Pivot does not lose user data");
   return client;
 }
 
