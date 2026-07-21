@@ -5,6 +5,7 @@ import { randomUUID } from "node:crypto";
 export const SESSION_COOKIE = "pivot_session";
 let client: Client | null = null;
 const memorySessions = new Map<string, { id: string; createdAt: string }>();
+const memoryEvents = new Map<string, { id: string; sessionId: string; type: string; payload: string }>();
 
 function getClient() {
   if (!client && process.env.TURSO_DATABASE_URL && process.env.TURSO_AUTH_TOKEN) client = createClient({ url: process.env.TURSO_DATABASE_URL, authToken: process.env.TURSO_AUTH_TOKEN });
@@ -18,10 +19,33 @@ export async function ensureSession() {
   if (!existing) cookieStore.set(SESSION_COOKIE, id, { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", maxAge: 60 * 60 * 24 * 365, path: "/" });
   const db = getClient();
   if (db) {
-    await db.execute("CREATE TABLE IF NOT EXISTS anonymous_sessions (id TEXT PRIMARY KEY, created_at TEXT NOT NULL)");
+    await db.batch([
+      "CREATE TABLE IF NOT EXISTS anonymous_sessions (id TEXT PRIMARY KEY, created_at TEXT NOT NULL)",
+      "CREATE TABLE IF NOT EXISTS goals (id TEXT PRIMARY KEY, session_id TEXT NOT NULL, label TEXT NOT NULL)",
+      "CREATE TABLE IF NOT EXISTS replacements (id TEXT PRIMARY KEY, session_id TEXT NOT NULL, label TEXT NOT NULL)",
+      "CREATE TABLE IF NOT EXISTS urge_sessions (id TEXT PRIMARY KEY, session_id TEXT NOT NULL, intensity INTEGER, context_type TEXT, created_at TEXT NOT NULL)",
+      "CREATE TABLE IF NOT EXISTS recommendations (id TEXT PRIMARY KEY, urge_session_id TEXT NOT NULL, replacement_id TEXT NOT NULL, source TEXT NOT NULL)",
+      "CREATE TABLE IF NOT EXISTS active_interventions (id TEXT PRIMARY KEY, recommendation_id TEXT NOT NULL, started_at TEXT NOT NULL, completed_at TEXT)",
+      "CREATE TABLE IF NOT EXISTS follow_ups (id TEXT PRIMARY KEY, intervention_id TEXT NOT NULL, outcome TEXT NOT NULL, helpfulness INTEGER)",
+      "CREATE TABLE IF NOT EXISTS privacy_events (id TEXT PRIMARY KEY, session_id TEXT NOT NULL, type TEXT NOT NULL, payload TEXT NOT NULL, created_at TEXT NOT NULL)",
+    ].map((sql) => ({ sql, args: [] })), "write");
     await db.execute({ sql: "INSERT OR IGNORE INTO anonymous_sessions (id, created_at) VALUES (?, ?)", args: [id, new Date().toISOString()] });
   } else if (!memorySessions.has(id)) memorySessions.set(id, { id, createdAt: new Date().toISOString() });
   return id;
+}
+
+export async function recordEvent(type: string, payload: Record<string, unknown>) {
+  const sessionId = await ensureSession();
+  const event = { id: randomUUID(), sessionId, type, payload: JSON.stringify(payload) };
+  if (getClient()) await getClient()!.execute({ sql: "INSERT INTO privacy_events (id, session_id, type, payload, created_at) VALUES (?, ?, ?, ?, ?)", args: [event.id, event.sessionId, event.type, event.payload, new Date().toISOString()] });
+  else memoryEvents.set(event.id, event);
+  return event.id;
+}
+
+export async function deleteEvent(id: string) {
+  const sessionId = await ensureSession();
+  if (getClient()) await getClient()!.execute({ sql: "DELETE FROM privacy_events WHERE id = ? AND session_id = ?", args: [id, sessionId] });
+  memoryEvents.delete(id);
 }
 
 export async function deleteSession() {
@@ -29,5 +53,6 @@ export async function deleteSession() {
   const id = cookieStore.get(SESSION_COOKIE)?.value;
   if (id && getClient()) await getClient()!.execute({ sql: "DELETE FROM anonymous_sessions WHERE id = ?", args: [id] });
   if (id) memorySessions.delete(id);
+  for (const [eventId, event] of memoryEvents) if (event.sessionId === id) memoryEvents.delete(eventId);
   cookieStore.delete(SESSION_COOKIE);
 }
