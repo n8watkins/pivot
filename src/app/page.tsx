@@ -246,44 +246,52 @@ export default function Home() {
 
         {screen === "home" && (
           <section className="home-screen">
-            <div className="home-intro">
-              <p className="eyebrow">Your pause space</p>
-              <h1>Ready when you are.</h1>
-              <p className="lede">One moment at a time. No judgment, no streaks.</p>
-            </div>
-            {completionMessage && <p className="success-status" role="status">{completionMessage}</p>}
-            {flowError && <p className="form-status" role="status">{flowError}</p>}
-            <button className="urge-button" disabled={!activePivot || !stateReady} onClick={() => { setCompletionMessage(""); setScreen("urge"); }}>
-              <span className="urge-symbol">✳</span>
-              <span>
-                <strong>{activePivot ? "I’m having an urge" : stateReady ? "Create a pivot first" : "Loading your pivots"}</strong>
-                <small>{activePivot ? "Let’s find a next step" : stateReady ? "Choose what you want to change" : "Just a moment"}</small>
-              </span>
-              <span className="arrow">→</span>
-            </button>
-            <div className="today-card">
-              <div>
-                <span className="card-kicker">CURRENT PIVOT</span>
-                {activePivot ? (
-                  <>
-                    <h2>{activePivot.goal}</h2>
-                    {pivots.length > 1 && (
-                      <div className="pivot-switcher" aria-label="Choose a pivot">
-                        {pivots.map((pivot) => <button disabled={!stateReady} className={pivot.id === activePivotId ? "active" : ""} key={pivot.id} onClick={() => choosePivot(pivot.id)}>{pivot.goal}</button>)}
-                      </div>
-                    )}
-                  </>
-                ) : stateReady ? <Link className="onboarding-link" href="/onboarding">Set up your first pivot →</Link> : <span className="settings-copy">Loading...</span>}
+            <div className="home-primary">
+              <div className="home-intro">
+                <p className="eyebrow">Your pause space</p>
+                <h1>Ready when you are.</h1>
+                <p className="lede">One moment at a time. No judgment, no streaks.</p>
               </div>
-              <Link className="icon-button" aria-label="Edit pivots" href="/settings/pivots">✎</Link>
+              {completionMessage && <p className="success-status" role="status">{completionMessage}</p>}
+              {flowError && <p className="form-status" role="status">{flowError}</p>}
+              <button className="urge-button" disabled={!activePivot || !stateReady} onClick={() => { setCompletionMessage(""); setScreen("urge"); }}>
+                <span className="urge-symbol">✳</span>
+                <span>
+                  <strong>{activePivot ? "I’m having an urge" : stateReady ? "Create a pivot first" : "Loading your pivots"}</strong>
+                  <small>{activePivot ? "Let’s find a next step" : stateReady ? "Choose what you want to change" : "Just a moment"}</small>
+                </span>
+                <span className="arrow">→</span>
+              </button>
             </div>
-            <div className="evidence">
-              <span className="evidence-icon">✦</span>
-              <div>
-                <strong>{history.length ? `${history.length} moment${history.length === 1 ? "" : "s"} redirected` : "Your first pivot starts here"}</strong>
-                <p>{history.length ? "Small actions add up." : "There’s no perfect way to begin."}</p>
+            <aside className="home-aside" aria-label="Pivot overview">
+              <div className="today-card">
+                <div>
+                  <span className="card-kicker">CURRENT PIVOT</span>
+                  {activePivot ? (
+                    <>
+                      <h2>{activePivot.goal}</h2>
+                      {pivots.length > 1 && (
+                        <div className="pivot-switcher" aria-label="Choose a pivot">
+                          {pivots.map((pivot) => <button disabled={!stateReady} className={pivot.id === activePivotId ? "active" : ""} key={pivot.id} onClick={() => choosePivot(pivot.id)}>{pivot.goal}</button>)}
+                        </div>
+                      )}
+                    </>
+                  ) : stateReady ? <Link className="onboarding-link" href="/onboarding">Set up your first pivot →</Link> : <span className="settings-copy">Loading...</span>}
+                </div>
+                <Link className="icon-button" aria-label="Edit pivots" href="/settings/pivots">✎</Link>
               </div>
-            </div>
+              <div className="evidence">
+                <span className="evidence-icon">✦</span>
+                <div>
+                  <strong>{history.length ? `${history.length} moment${history.length === 1 ? "" : "s"} redirected` : "Your first pivot starts here"}</strong>
+                  <p>{history.length ? "Small actions add up." : "There’s no perfect way to begin."}</p>
+                </div>
+              </div>
+              <div className="home-aside-note">
+                <span className="card-kicker">A SMALL REMINDER</span>
+                <p>There is no perfect way to begin. Just choose the next useful thing.</p>
+              </div>
+            </aside>
           </section>
         )}
 
@@ -395,19 +403,32 @@ export default function Home() {
 
         {screen === "history" && (
           <section className="history-screen">
-            <p className="eyebrow">Your evidence</p>
-            <h1>Small moments count.</h1>
-            <p className="lede">A quiet record of the times you chose a different next step.</p>
-            {historyPivots.length > 1 && <div className="history-filters" aria-label="Filter History by pivot"><button className={historyFilter === "all" ? "active" : ""} onClick={() => setHistoryFilter("all")}>All</button>{historyPivots.map((pivot) => <button className={historyFilter === pivot.id ? "active" : ""} key={pivot.id} onClick={() => setHistoryFilter(pivot.id)}>{pivot.label}</button>)}</div>}
-            <div className="history-stat"><strong>{visibleHistory.length}</strong><span>redirected {visibleHistory.length === 1 ? "moment" : "moments"}</span></div>
-            {flowError && <p className="form-status" role="status">{flowError}</p>}
-            {visibleHistory.length ? (
-              <div className="history-list">
-                {visibleHistory.map((item, index) => <article key={item.id ?? `${item.date}-${index}`}><span className="history-dot">✦</span><div><strong>{item.choice}</strong><p>{item.pivotGoal && `${item.pivotGoal} · `}{item.outcome} · {formatHistoryDate(item.date)}</p></div>{item.id && <button className="history-delete" aria-label={`Delete ${item.choice} History entry`} onClick={() => removeHistoryEvent(item.id!)}>×</button>}</article>)}
+            <div className="history-heading">
+              <p className="eyebrow">Your evidence</p>
+              <h1>Small moments count.</h1>
+              <p className="lede">A quiet record of the times you chose a different next step.</p>
+            </div>
+            <div className="history-layout">
+              <div className="history-main">
+                {historyPivots.length > 1 && <div className="history-filters" aria-label="Filter History by pivot"><button className={historyFilter === "all" ? "active" : ""} onClick={() => setHistoryFilter("all")}>All</button>{historyPivots.map((pivot) => <button className={historyFilter === pivot.id ? "active" : ""} key={pivot.id} onClick={() => setHistoryFilter(pivot.id)}>{pivot.label}</button>)}</div>}
+                <div className="history-stat"><strong>{visibleHistory.length}</strong><span>redirected {visibleHistory.length === 1 ? "moment" : "moments"}</span></div>
+                {flowError && <p className="form-status" role="status">{flowError}</p>}
+                {visibleHistory.length ? (
+                  <div className="history-list">
+                    {visibleHistory.map((item, index) => <article key={item.id ?? `${item.date}-${index}`}><span className="history-dot">✦</span><div><strong>{item.choice}</strong><p>{item.pivotGoal && `${item.pivotGoal} · `}{item.outcome} · {formatHistoryDate(item.date)}</p></div>{item.id && <button className="history-delete" aria-label={`Delete ${item.choice} History entry`} onClick={() => removeHistoryEvent(item.id!)}>×</button>}</article>)}
+                  </div>
+                ) : <div className="empty-state">{historyFilter === "all" ? "Your first entry will appear here after a pivot." : "No check-ins for this pivot yet."}</div>}
               </div>
-            ) : <div className="empty-state">{historyFilter === "all" ? "Your first entry will appear here after a pivot." : "No check-ins for this pivot yet."}</div>}
-            <button className="primary-button full" onClick={() => setScreen("home")}>Back to pause space</button>
-            <Link className="quiet-button history-settings-link" href="/settings">Manage export and deletion in Settings</Link>
+              <aside className="history-aside">
+                <div className="history-aside-card">
+                  <span className="evidence-icon">✦</span>
+                  <span className="card-kicker">KEEP GOING</span>
+                  <p>History is evidence, not a scorecard. Every check-in gives you useful information.</p>
+                </div>
+                <button className="primary-button full" onClick={() => setScreen("home")}>Back to pause space</button>
+                <Link className="quiet-button history-settings-link" href="/settings">Manage export and deletion in Settings</Link>
+              </aside>
+            </div>
           </section>
         )}
 
