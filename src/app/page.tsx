@@ -31,7 +31,7 @@ export default function Home() {
 
   useEffect(() => {
     let cancelled = false;
-    void fetch("/api/state").then((response) => response.ok ? response.json() : null).then((snapshot: { goal?: string; goals?: string[]; replacements?: { id: string; name: string; detail: string; duration: string }[]; pivots?: { id: string; goal: string; replacements: { id: string; name: string; detail: string; duration: string }[] }[]; history?: { choice: string; outcome: string; helpful: boolean; date: string }[]; active?: { replacementId: string } } | null) => {
+    void fetch("/api/state").then((response) => response.ok ? response.json() : null).then((snapshot: { goal?: string; goals?: string[]; replacements?: { id: string; name: string; detail: string; duration: string }[]; pivots?: { id: string; goal: string; replacements: { id: string; name: string; detail: string; duration: string }[] }[]; contextTags?: string[]; history?: { choice: string; outcome: string; helpful: boolean; date: string }[]; active?: { replacementId: string } } | null) => {
       if (cancelled || !snapshot?.goal) return;
       const replacementIds = snapshot.replacements?.map((item) => item.id) ?? [];
       const serverCustom = snapshot.replacements?.filter((item) => !replacements.some((option) => option.id === item.id)).map((item) => ({ ...item, icon: "custom" })) ?? [];
@@ -43,6 +43,7 @@ export default function Home() {
       if (serverPivots[0]) setSelected(serverPivots[0].replacements.map((item) => item.id));
       else if (replacementIds.length) setSelected(replacementIds);
       setHistory(snapshot.history ?? []);
+      setCustomContexts(snapshot.contextTags ?? []);
       if (snapshot.active?.replacementId) { setModelPrimaryId(snapshot.active.replacementId); setStarted(true); setScreen("active"); }
     }).catch(() => undefined).finally(() => { if (!cancelled) setStateReady(true); });
     return () => { cancelled = true; };
@@ -85,7 +86,7 @@ export default function Home() {
   }
   function complete(outcome: string) { const next = [{ date: new Date().toISOString(), choice: primary.name, outcome }, ...history]; setHistory(next); localStorage.setItem("pivot-state", JSON.stringify({ goal, selected, customReplacements, pivots, activePivotId, customContexts, history: next })); void fetch("/api/closed-loop", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ replacementId: primary.id, intensity: urge, contextType: context, reason: primary.detail, firstStep: `Begin with 30 seconds of ${primary.name.toLowerCase()}.`, source: recommendationSource, outcome, helpful: outcome.includes("lighter") }) }); setScreen("home"); setStarted(false); }
   function reset() { setScreen("home"); }
-  function addContextTag() { const tag = customContext.trim(); if (!tag || customContexts.some((item) => item.toLowerCase() === tag.toLowerCase())) return; const next = [...customContexts, tag]; setCustomContexts(next); setContext(tag); setCustomContext(""); localStorage.setItem("pivot-state", JSON.stringify({ goal, selected, customReplacements, pivots, activePivotId, customContexts: next, history })); }
+  function addContextTag() { const tag = customContext.trim(); if (!tag || customContexts.some((item) => item.toLowerCase() === tag.toLowerCase())) return; const next = [...customContexts, tag]; setCustomContexts(next); setContext(tag); setCustomContext(""); localStorage.setItem("pivot-state", JSON.stringify({ goal, selected, customReplacements, pivots, activePivotId, customContexts: next, history })); void fetch("/api/tags", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ label: tag }) }); }
   function choosePivot(id: string) { const pivot = pivots.find((item) => item.id === id); setActivePivotId(id); setSelected(pivot?.replacements.map((item) => item.id) ?? []); setModelPrimaryId(null); setRecommendation(null); setFlowError(""); localStorage.setItem("pivot-state", JSON.stringify({ goal, selected: pivot?.replacements.map((item) => item.id) ?? [], customReplacements, pivots, activePivotId: id, customContexts, history })); }
   function formatHistoryDate(value: string) { if (value === "Today") return value; const date = new Date(value); return Number.isNaN(date.getTime()) ? "Recently" : new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" }).format(date); }
 

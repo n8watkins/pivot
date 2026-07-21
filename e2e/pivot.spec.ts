@@ -137,6 +137,32 @@ test("settings exposes pivot, account, and privacy controls", async ({ page }) =
   await expect(page.getByRole("link", { name: /Add pivot/ })).toBeVisible();
 });
 
+test("settings can edit, reorder, and delete a pivot", async ({ page }) => {
+  await createBasicPivot(page);
+  await page.goto("/settings");
+  await page.getByRole("link", { name: "Edit late night scrolling" }).click();
+  await page.getByLabel("Pivot name").fill("evening scrolling");
+  await page.getByRole("button", { name: /Make a glass of water/ }).click();
+  await page.getByRole("button", { name: "Move Make a glass of water up" }).click();
+  await page.getByRole("button", { name: "Save pivot" }).click();
+  await expect(page.getByText("evening scrolling")).toBeVisible();
+  await page.getByRole("link", { name: "Edit evening scrolling" }).click();
+  page.once("dialog", (dialog) => dialog.accept());
+  await page.getByRole("button", { name: "Delete this pivot" }).click();
+  await expect(page.getByText("Create your first pivot to get started.")).toBeVisible();
+});
+
+test("custom context tags persist and can be removed in settings", async ({ page }) => {
+  await createBasicPivot(page);
+  await page.getByRole("button", { name: /I’m having an urge/ }).click();
+  await page.getByLabel("Add your own tag").fill("restless");
+  await Promise.all([page.waitForResponse("**/api/tags"), page.getByRole("button", { name: "Add" }).click()]);
+  await page.goto("/settings");
+  await expect(page.getByText("restless")).toBeVisible();
+  await page.getByRole("button", { name: "Remove restless" }).click();
+  await expect(page.getByText("restless")).not.toBeVisible();
+});
+
 test("privacy event can be created and deleted for the anonymous session", async ({ request }) => {
   const created = await request.post("/api/events", { data: { type: "follow_up_completed", payload: { replacementId: "walk", helpful: true } } });
   expect(created.ok()).toBeTruthy();

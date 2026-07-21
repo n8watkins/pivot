@@ -44,6 +44,13 @@ const migrations = [
       "CREATE INDEX IF NOT EXISTS idx_replacements_pivot ON replacements(pivot_id)",
     ],
   },
+  {
+    version: 5,
+    statements: [
+      "CREATE TABLE IF NOT EXISTS context_tags (id TEXT PRIMARY KEY, session_id TEXT NOT NULL, label TEXT NOT NULL, created_at TEXT NOT NULL)",
+      "CREATE INDEX IF NOT EXISTS idx_context_tags_session ON context_tags(session_id)",
+    ],
+  },
 ] as const;
 
 async function hasColumn(db: Client, table: string, column: string) {

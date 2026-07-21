@@ -61,6 +61,7 @@ export async function deleteSession() {
       "DELETE FROM replacements WHERE session_id = ?",
       "DELETE FROM goals WHERE session_id = ?",
       "DELETE FROM pivots WHERE session_id = ?",
+      "DELETE FROM context_tags WHERE session_id = ?",
       "DELETE FROM privacy_events WHERE session_id = ?",
       "DELETE FROM anonymous_sessions WHERE id = ?",
     ].map((sql) => ({ sql, args: [id] })), "write");

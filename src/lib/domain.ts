@@ -8,6 +8,7 @@ export type PivotSnapshot = {
   goals: string[];
   replacements: ReplacementOption[];
   pivots: { id: string; goal: string; replacements: ReplacementOption[] }[];
+  contextTags: string[];
   history: { id: string; replacementId: string; choice: string; outcome: string; helpful: boolean; date: string }[];
   active?: { id: string; replacementId: string; startedAt: string };
 };
@@ -31,8 +32,8 @@ export async function saveSetup(goals: string[], replacements: ReplacementOption
   const db = getDatabase();
   const parsed = replacements.map((replacement) => replacementInputSchema.parse(replacement));
   if (!db) {
-    const grouped = pivots.length ? pivots.map((pivot) => ({ ...pivot, replacements: pivot.replacements.map((replacement) => replacementInputSchema.parse(replacement)) })) : [{ id: "legacy", goal: goals[0] ?? "", replacements: parsed }];
-    memoryState.set(sessionId, { goal: goals[0] ?? "", goals, replacements: parsed, pivots: grouped, history: memoryState.get(sessionId)?.history ?? [], active: memoryState.get(sessionId)?.active });
+    const grouped = pivots.length ? pivots.map((pivot) => ({ ...pivot, replacements: pivot.replacements.map((replacement) => replacementInputSchema.parse(replacement)) })) : goals[0] ? [{ id: "legacy", goal: goals[0], replacements: parsed }] : [];
+    memoryState.set(sessionId, { goal: goals[0] ?? "", goals, replacements: parsed, pivots: grouped, contextTags: memoryState.get(sessionId)?.contextTags ?? [], history: memoryState.get(sessionId)?.history ?? [], active: memoryState.get(sessionId)?.active });
     return sessionId;
   }
   await initializeDatabase();
@@ -52,12 +53,13 @@ export async function saveSetup(goals: string[], replacements: ReplacementOption
 export async function getSnapshot(): Promise<PivotSnapshot> {
   const sessionId = await ensureSession();
   const db = getDatabase();
-  if (!db) return memoryState.get(sessionId) ?? { goal: "", goals: [], replacements: [], pivots: [], history: [] };
+  if (!db) return memoryState.get(sessionId) ?? { goal: "", goals: [], replacements: [], pivots: [], contextTags: [], history: [] };
   await initializeDatabase();
-  const [pivotRows, goal, replacements, history, active] = await Promise.all([
+  const [pivotRows, goal, replacements, contextTags, history, active] = await Promise.all([
     db.execute({ sql: "SELECT id, label FROM pivots WHERE session_id = ? ORDER BY rowid", args: [sessionId] }),
     db.execute({ sql: "SELECT label, pivot_id FROM goals WHERE session_id = ? ORDER BY rowid", args: [sessionId] }),
     db.execute({ sql: "SELECT CASE WHEN instr(id, ':') > 0 THEN substr(id, instr(id, ':') + 1) ELSE id END as id, pivot_id as pivotId, label as name, detail, duration FROM replacements WHERE session_id = ? ORDER BY rowid", args: [sessionId] }),
+    db.execute({ sql: "SELECT label FROM context_tags WHERE session_id = ? ORDER BY created_at", args: [sessionId] }),
     db.execute({ sql: "SELECT f.id, r.replacement_id as replacementId, rp.label as choice, f.outcome, f.helpfulness, COALESCE(NULLIF(f.created_at, ''), a.completed_at, a.started_at) as date FROM follow_ups f JOIN active_interventions a ON a.id = f.intervention_id JOIN recommendations r ON r.id = a.recommendation_id JOIN urge_sessions u ON u.id = r.urge_session_id JOIN replacements rp ON rp.session_id = u.session_id AND (rp.id = r.replacement_id OR (instr(rp.id, ':') > 0 AND substr(rp.id, instr(rp.id, ':') + 1) = r.replacement_id)) WHERE u.session_id = ? ORDER BY COALESCE(NULLIF(f.created_at, ''), a.completed_at, a.started_at) DESC LIMIT 30", args: [sessionId] }),
     db.execute({ sql: "SELECT id, replacement_id as replacementId, started_at as startedAt FROM active_interventions WHERE session_id = ? AND completed_at IS NULL ORDER BY started_at DESC LIMIT 1", args: [sessionId] }),
   ]);
@@ -66,7 +68,24 @@ export async function getSnapshot(): Promise<PivotSnapshot> {
   const allReplacements = replacements.rows.map((row) => ({ id: String(row.id), name: String(row.name), detail: String(row.detail), duration: String(row.duration), pivotId: row.pivotId ? String(row.pivotId) : undefined }));
   const storedPivots = pivotRows.rows.map((row) => ({ id: String(row.id), goal: String(row.label), replacements: allReplacements.filter((replacement) => replacement.pivotId === String(row.id)).map(publicReplacement) })).filter((pivot) => pivot.goal && pivot.replacements.length);
   const pivots = storedPivots.length ? storedPivots : goals[0] && allReplacements.length ? [{ id: "legacy", goal: goals[0], replacements: allReplacements.map(publicReplacement) }] : [];
-  return { goal: goals[0] ?? "", goals, replacements: allReplacements.map(publicReplacement), pivots, history: history.rows.map((row) => ({ id: String(row.id), replacementId: String(row.replacementId), choice: String(row.choice), outcome: String(row.outcome), helpful: Boolean(row.helpfulness), date: String(row.date) })), active: activeRow ? { id: String(activeRow.id), replacementId: String(activeRow.replacementId), startedAt: String(activeRow.startedAt) } : undefined };
+  return { goal: goals[0] ?? "", goals, replacements: allReplacements.map(publicReplacement), pivots, contextTags: contextTags.rows.map((row) => String(row.label)), history: history.rows.map((row) => ({ id: String(row.id), replacementId: String(row.replacementId), choice: String(row.choice), outcome: String(row.outcome), helpful: Boolean(row.helpfulness), date: String(row.date) })), active: activeRow ? { id: String(activeRow.id), replacementId: String(activeRow.replacementId), startedAt: String(activeRow.startedAt) } : undefined };
+}
+
+export async function saveContextTag(label: string) {
+  const sessionId = await ensureSession();
+  const value = label.trim();
+  const db = getDatabase();
+  if (!db) { const snapshot = await getSnapshot(); if (!snapshot.contextTags.some((tag) => tag.toLowerCase() === value.toLowerCase())) memoryState.set(sessionId, { ...snapshot, contextTags: [...snapshot.contextTags, value] }); return; }
+  await initializeDatabase();
+  await db.execute({ sql: "INSERT INTO context_tags (id, session_id, label, created_at) SELECT ?, ?, ?, ? WHERE NOT EXISTS (SELECT 1 FROM context_tags WHERE session_id = ? AND lower(label) = lower(?))", args: [randomUUID(), sessionId, value, new Date().toISOString(), sessionId, value] });
+}
+
+export async function deleteContextTag(label: string) {
+  const sessionId = await ensureSession();
+  const db = getDatabase();
+  if (!db) { const snapshot = await getSnapshot(); memoryState.set(sessionId, { ...snapshot, contextTags: snapshot.contextTags.filter((tag) => tag !== label) }); return; }
+  await initializeDatabase();
+  await db.execute({ sql: "DELETE FROM context_tags WHERE session_id = ? AND label = ?", args: [sessionId, label] });
 }
 
 export async function recordClosedLoop(input: { replacementId: string; intensity: number; contextType: string; reason: string; firstStep: string; source: string; outcome: string; helpful: boolean }) {
