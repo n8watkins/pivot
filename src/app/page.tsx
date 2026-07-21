@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { Header, Logo, Progress, ReplacementChoice } from "@/components/pivot/ui";
 
 type Screen = "setup" | "home" | "urge" | "recommendation" | "active" | "followup" | "history" | "safety";
 type Replacement = { id: string; name: string; detail: string; duration: string; icon: string };
@@ -12,16 +13,6 @@ const replacements: Replacement[] = [
   { id: "water", name: "Make a glass of water", detail: "A small, physical action to change the moment.", duration: "3 min", icon: "◒" },
   { id: "friend", name: "Message someone", detail: "A low-pressure way to reconnect with a person.", duration: "5 min", icon: "✦" },
 ];
-
-function Logo() { return <div className="logo-mark" aria-hidden="true">✳</div>; }
-
-function Header({ onHistory, onReset }: { onHistory: () => void; onReset: () => void }) {
-  return <header className="site-header"><a className="brand" href="#" onClick={(event) => { event.preventDefault(); onReset(); }}><Logo /><span>pivot</span></a><button className="text-button" onClick={onHistory}>History <span aria-hidden="true">↗</span></button></header>;
-}
-
-function Progress({ step, total = 3 }: { step: number; total?: number }) {
-  return <div className="progress" aria-label={`Step ${step} of ${total}`}><span>{step}</span><div className="progress-track"><i style={{ width: `${(step / total) * 100}%` }} /></div><span>{total}</span></div>;
-}
 
 export default function Home() {
   const [screen, setScreen] = useState<Screen>(() => typeof window !== "undefined" && localStorage.getItem("pivot-state") ? "home" : "setup");
@@ -49,7 +40,7 @@ export default function Home() {
   function complete(outcome: string) { const next = [{ date: "Today", choice: primary.name, outcome }, ...history]; setHistory(next); localStorage.setItem("pivot-state", JSON.stringify({ goal, selected, history: next })); void fetch("/api/closed-loop", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ replacementId: primary.id, intensity: urge, contextType: context, reason: primary.detail, firstStep: `Begin with 30 seconds of ${primary.name.toLowerCase()}.`, source: "fallback", outcome, helpful: outcome.includes("lighter") }) }); setScreen("home"); setStarted(false); }
   function reset() { setScreen(goal ? "home" : "setup"); }
 
-  if (screen === "setup") return <main className="app-shell"><div className="setup-wrap"><div className="setup-top"><a className="brand" href="#"><Logo /><span>pivot</span></a><span className="quiet">Private by design</span></div><Progress step={1} /><div className="setup-copy"><p className="eyebrow">A small change, right now</p><h1>What would you like to pivot away from?</h1><p className="lede">Choose one digital habit you want a little more space from. This stays yours.</p></div><label className="field-label" htmlFor="goal">My goal is to stop</label><input autoFocus id="goal" className="text-input" placeholder="e.g. scrolling late at night" value={goal} onChange={(e) => setGoal(e.target.value)} /><div className="setup-section"><p className="field-label">When an urge arrives, I’m open to</p><div className="choice-grid">{replacements.map((item) => <button key={item.id} className={`choice ${selected.includes(item.id) ? "selected" : ""}`} onClick={() => setSelected((current) => current.includes(item.id) ? current.filter((id) => id !== item.id) : [...current, item.id])}><span className="choice-icon">{item.icon}</span><span>{item.name}</span><span className="check">{selected.includes(item.id) ? "✓" : ""}</span></button>)}</div><p className="hint">Pick 3 to 5 options that feel realistic for you.</p></div><button className="primary-button full" disabled={!goal.trim() || selected.length < 3} onClick={finishSetup}>Continue <span>→</span></button><p className="privacy-note"><span>⊙</span> No account needed. Your choices stay on this device.</p></div></main>;
+  if (screen === "setup") return <main className="app-shell"><div className="setup-wrap"><div className="setup-top"><a className="brand" href="#"><Logo /><span>pivot</span></a><span className="quiet">Private by design</span></div><Progress step={1} /><div className="setup-copy"><p className="eyebrow">A small change, right now</p><h1>What would you like to pivot away from?</h1><p className="lede">Choose one digital habit you want a little more space from. This stays yours.</p></div><label className="field-label" htmlFor="goal">My goal is to stop</label><input autoFocus id="goal" className="text-input" placeholder="e.g. scrolling late at night" value={goal} onChange={(e) => setGoal(e.target.value)} /><div className="setup-section"><p className="field-label">When an urge arrives, I’m open to</p><div className="choice-grid">{replacements.map((item) => <ReplacementChoice key={item.id} item={item} selected={selected.includes(item.id)} onToggle={() => setSelected((current) => current.includes(item.id) ? current.filter((id) => id !== item.id) : [...current, item.id])} />)}</div><p className="hint">Pick 3 to 5 options that feel realistic for you.</p></div><button className="primary-button full" disabled={!goal.trim() || selected.length < 3} onClick={finishSetup}>Continue <span>→</span></button><p className="privacy-note"><span>⊙</span> No account needed. Your choices stay on this device.</p></div></main>;
 
   return <main className="app-shell"><div className="app-frame"><Header onHistory={() => setScreen("history")} onReset={reset} />
     {screen === "home" && <section className="home-screen"><div className="home-intro"><p className="eyebrow">Your pause space</p><h1>Ready when you are.</h1><p className="lede">One moment at a time. No judgment, no streaks.</p></div><button className="urge-button" onClick={() => setScreen("urge")}><span className="urge-symbol">✳</span><span><strong>I’m having an urge</strong><small>Let’s find a next step</small></span><span className="arrow">→</span></button><div className="today-card"><div><span className="card-kicker">YOUR PIVOT</span><h2>{goal}</h2></div><button className="icon-button" aria-label="Edit goal" onClick={() => setScreen("setup")}>✎</button></div><div className="evidence"><span className="evidence-icon">✦</span><div><strong>{history.length ? `${history.length} moment${history.length === 1 ? "" : "s"} redirected` : "Your first pivot starts here"}</strong><p>{history.length ? "Small actions add up." : "There’s no perfect way to begin."}</p></div></div></section>}
