@@ -225,7 +225,11 @@ export default function Home() {
     activePivotIdRef.current = requestedPivot.id;
     setActivePivotId(requestedPivot.id);
     setSelected(requestedPivot.replacements.map((replacement) => replacement.id));
-    if (!response?.ok) setFlowError("This action could not be saved for refresh recovery, but you can still continue with it.");
+    if (!response?.ok) {
+      setFlowError("This action could not be saved. Please try starting it again.");
+      setIsStarting(false);
+      return;
+    }
     setRecommendation({ replacementId: item.id, reason: chosenReason, firstStep: chosenFirstStep, alternatives: [], source: chosenSource });
     setModelPrimaryId(item.id);
     setTimerRemaining(null);

@@ -4,13 +4,16 @@ import { ensureSession, getDatabase } from "@/lib/session";
 import { getSnapshot } from "@/lib/domain";
 import { recommendationInputSchema } from "@/lib/schemas";
 import { isRateLimited, rateLimitResponse } from "@/lib/rate-limit";
-import { rejectCrossOriginMutation } from "@/lib/request-security";
+import { networkRateLimitKey, rejectCrossOriginMutation } from "@/lib/request-security";
 
 export async function POST(request: Request) {
   const rejected = rejectCrossOriginMutation(request);
   if (rejected) return rejected;
   const sessionId = await ensureSession();
-  if (await isRateLimited(`recommendation:${sessionId}`, 20, { database: getDatabase() })) return rateLimitResponse();
+  const database = getDatabase();
+  if (await isRateLimited(`recommendation:${sessionId}`, 20, { database })) return rateLimitResponse();
+  const networkKey = networkRateLimitKey(request, "recommendation");
+  if (networkKey && await isRateLimited(networkKey, 40, { database })) return rateLimitResponse();
   const body = await request.json().catch(() => ({}));
   const parsedInput = recommendationInputSchema.safeParse(body);
   if (!parsedInput.success) return NextResponse.json({ error: "Invalid recommendation input" }, { status: 400 });

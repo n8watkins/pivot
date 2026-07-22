@@ -61,8 +61,9 @@ export default function PivotEditor({ pivotId }: { pivotId?: string }) {
     setSaving(true);
     setError("");
     const response = await fetch(pivotId ? `/api/pivots/${pivotId}` : "/api/pivots", { method: pivotId ? "PATCH" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ goal, replacements: actions }) }).catch(() => null);
+    const payload = response ? await response.json().catch(() => null) : null;
     setSaving(false);
-    if (!response?.ok) { setError("Your pivot could not be saved. Please try again."); return; }
+    if (!response?.ok) { setError(payload?.error ?? "Your pivot could not be saved. Please try again."); return; }
     router.push("/settings/pivots");
   }
 
@@ -70,7 +71,8 @@ export default function PivotEditor({ pivotId }: { pivotId?: string }) {
     if (!pivotId || !window.confirm("Delete this pivot? Its past History entries will remain.")) return;
     setSaving(true);
     const response = await fetch(`/api/pivots/${pivotId}`, { method: "DELETE" }).catch(() => null);
-    if (!response?.ok) { setSaving(false); setError("Your pivot could not be deleted."); return; }
+    const payload = response ? await response.json().catch(() => null) : null;
+    if (!response?.ok) { setSaving(false); setError(payload?.error ?? "Your pivot could not be deleted."); return; }
     router.push("/settings/pivots");
   }
 

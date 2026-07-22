@@ -237,6 +237,36 @@ test("starting an action hides pivot navigation until persistence completes", as
   expect(state.active.pivotId).toBe(state.pivots.find((pivot: { goal: string }) => pivot.goal === "Pivot alpha").id);
 });
 
+test("a failed action start stays retryable", async ({ page }) => {
+  await createBasicPivot(page);
+  await page.getByRole("button", { name: /I’m having an urge/ }).click();
+  await page.getByRole("button", { name: "Skip and show me something" }).click();
+  await page.route("**/api/intervention", (route) => route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ error: "Unavailable" }) }));
+  await page.getByRole("button", { name: /Start this action/ }).click();
+  await expect(page.getByRole("heading", { name: /Try this for/ })).toBeVisible();
+  await expect(page.getByRole("status")).toContainText("try starting it again");
+});
+
+test("an active action protects its pivot from edits and deletion", async ({ page }) => {
+  await createBasicPivot(page);
+  await page.getByRole("button", { name: /I’m having an urge/ }).click();
+  await page.getByRole("button", { name: "Skip and show me something" }).click();
+  await page.getByRole("button", { name: /Start this action/ }).click();
+  const statuses = await page.evaluate(async () => {
+    const state = await fetch("/api/state").then((response) => response.json());
+    const pivot = state.pivots[0];
+    const body = JSON.stringify({ goal: pivot.goal, replacements: pivot.replacements });
+    const edited = await fetch(`/api/pivots/${pivot.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body });
+    const deleted = await fetch(`/api/pivots/${pivot.id}`, { method: "DELETE" });
+    return [edited.status, deleted.status];
+  });
+  expect(statuses).toEqual([409, 409]);
+  await page.getByRole("button", { name: /I’m done for now/ }).click();
+  await page.getByRole("button", { name: "Much lighter" }).click();
+  await page.getByRole("button", { name: "Yes, it helped" }).click();
+  await expect(page.getByRole("status")).toContainText("Check-in saved");
+});
+
 test("structured recommendation controls reason, first step, and alternatives", async ({ page }) => {
   await createBasicPivot(page);
   await page.route("**/api/recommendation", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ replacementId: "breathe", reason: "Fits a quiet indoor moment.", firstStep: "Put both feet on the floor.", alternatives: ["stretch", "walk"], safety: "safe", source: "gemini" }) }));
@@ -413,8 +443,13 @@ test("anonymous session deletion removes pivot state", async ({ request }) => {
   expect(saved.ok()).toBeTruthy();
   expect((await request.get("/api/state")).ok()).toBeTruthy();
   expect((await (await request.get("/api/state")).json()).pivots).toHaveLength(1);
+  const sessionId = (await (await request.get("/api/session")).json()).sessionId as string;
   expect((await request.delete("/api/session")).ok()).toBeTruthy();
   expect((await (await request.get("/api/state")).json()).pivots).toEqual([]);
+  const db = createClient({ url: "file:./data/pivot-e2e.db" });
+  const rateLimits = await executeWhenDatabaseIsAvailable(db, { sql: "SELECT COUNT(*) AS count FROM rate_limits WHERE key LIKE '%:' || ?", args: [sessionId] });
+  expect(Number(rateLimits.rows[0].count)).toBe(0);
+  db.close();
 });
 
 test("data export contains the user's structured data and attachment headers", async ({ request }) => {

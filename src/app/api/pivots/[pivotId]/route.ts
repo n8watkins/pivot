@@ -16,7 +16,9 @@ export async function PATCH(request: Request, context: RouteContext) {
   const body = await request.json().catch(() => ({}));
   const parsed = pivotInputSchema.safeParse({ ...body, id: pivotId });
   if (!parsed.success) return NextResponse.json({ error: "A name and at least one action are required." }, { status: 400 });
-  if (!await updatePivot(parsed.data)) return NextResponse.json({ error: "Pivot not found." }, { status: 404 });
+  const result = await updatePivot(parsed.data);
+  if (result === "not_found") return NextResponse.json({ error: "Pivot not found." }, { status: 404 });
+  if (result === "active") return NextResponse.json({ error: "Finish the active action before editing this pivot." }, { status: 409 });
   return NextResponse.json({ pivot: parsed.data });
 }
 
@@ -26,6 +28,8 @@ export async function DELETE(request: Request, context: RouteContext) {
   const sessionId = await ensureSession();
   if (await isRateLimited(`pivots:${sessionId}`, 30, { database: getDatabase() })) return rateLimitResponse();
   const { pivotId } = await context.params;
-  if (!await deletePivot(pivotId)) return NextResponse.json({ error: "Pivot not found." }, { status: 404 });
+  const result = await deletePivot(pivotId);
+  if (result === "not_found") return NextResponse.json({ error: "Pivot not found." }, { status: 404 });
+  if (result === "active") return NextResponse.json({ error: "Finish the active action before deleting this pivot." }, { status: 409 });
   return NextResponse.json({ deleted: true });
 }

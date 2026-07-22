@@ -106,7 +106,7 @@ Free-text context is capped, used only for the immediate recommendation and safe
 ## Privacy and safety
 
 Settings provides event-level History deletion, full JSON export, and complete data deletion.
-Deleting all data removes pivots, actions, interventions, follow-ups, privacy events, the anonymous session, and a connected Pivot account link.
+Deleting all data removes pivots, actions, interventions, follow-ups, privacy events, rate-limit records owned by the anonymous session, the anonymous session, and a connected Pivot account link.
 Custom context tags are stored because the user explicitly creates them for reuse.
 One-time context notes are not stored.
 
