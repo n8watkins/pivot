@@ -10,7 +10,7 @@ It supports any everyday habit, keeps each habit and its replacement actions in 
 - Reusable built-in and custom context tags.
 - Optional one-time context notes that are sent for recommendation and never stored.
 - Deterministic recommendation ranking based on recent helpful and unhelpful outcomes.
-- Optional Gemini structured recommendations with deterministic fallback.
+- Deterministic recommendations by default, with the Gemini adapter retained behind an explicit release flag.
 - Active-action refresh recovery and a duration countdown.
 - Follow-up for current urge, lapse outcome, and explicit helpfulness.
 - Pivot-aware History with event deletion and preserved labels after pivot deletion.
@@ -64,7 +64,8 @@ Copy `.env.example` to `.env.local` and set only the capabilities you want to en
 | --- | --- | --- |
 | `TURSO_DATABASE_URL` | Production | Remote Turso URL or local `file:` URL. |
 | `TURSO_AUTH_TOKEN` | Remote Turso | Authenticates the remote database client. |
-| `GEMINI_API_KEY` | No | Enables Gemini recommendations while retaining deterministic fallback. |
+| `ENABLE_GEMINI_RECOMMENDATIONS` | No | Must be `true` before Pivot can call Gemini. Defaults to deterministic recommendations. |
+| `GEMINI_API_KEY` | No | Provides Gemini credentials but does not enable model calls by itself. |
 | `AUTH_SECRET` | GitHub sign-in | Encrypts Auth.js cookies and tokens. |
 | `AUTH_GITHUB_ID` | GitHub sign-in | GitHub OAuth application client ID. |
 | `AUTH_GITHUB_SECRET` | GitHub sign-in | GitHub OAuth application client secret. |
@@ -94,6 +95,7 @@ Signing out rotates the browser to a fresh anonymous session so connected accoun
 ## Recommendation behavior
 
 The server validates every replacement against the selected pivot before starting or recording an intervention.
+Pivot uses deterministic ranking unless both `ENABLE_GEMINI_RECOMMENDATIONS=true` and `GEMINI_API_KEY` are configured.
 Gemini must return structured JSON containing an approved replacement ID, a concise reason, a concrete first step, up to two approved alternatives, and a safety status.
 Malformed, delayed, unsafe, unapproved, or empty model output is discarded.
 Missing credentials and provider failures use the same deterministic ranking path.
@@ -141,7 +143,8 @@ The GitHub workflow runs the same gates on pushes to `main` and pull requests.
 ## Deploy to Vercel
 
 Create a Turso database and set `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` in the Vercel project before the first production request.
-Add `GEMINI_API_KEY` only when model-backed recommendations are ready.
+Leave `ENABLE_GEMINI_RECOMMENDATIONS=false` until model-backed recommendations are intentionally released.
+Add `GEMINI_API_KEY` and enable the release flag together when that later capability is ready.
 Add all three Auth.js and GitHub variables together when GitHub sign-in is ready.
 Configure the production GitHub OAuth callback as `https://YOUR_DOMAIN/api/auth/callback/github`.
 

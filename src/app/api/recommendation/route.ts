@@ -23,7 +23,8 @@ export async function POST(request: Request) {
   let source: "gemini" | "fallback" = "fallback";
   let recommendation = deterministicFallback(replacements, history);
   const apiKey = process.env.GEMINI_API_KEY;
-  if (apiKey) {
+  const geminiEnabled = process.env.ENABLE_GEMINI_RECOMMENDATIONS === "true";
+  if (apiKey && geminiEnabled) {
     try {
       const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${apiKey}`, { method: "POST", headers: { "Content-Type": "application/json" }, signal: AbortSignal.timeout(3500), body: JSON.stringify({ contents: [{ parts: [{ text: `Choose only from these approved replacements: ${JSON.stringify(replacements)}. Context: ${context}. Return JSON with replacementId, reason, firstStep, alternatives (max 2 ids), safety (safe|review|blocked).` }] }], generationConfig: { responseMimeType: "application/json" } }) });
       const payload = await response.json();

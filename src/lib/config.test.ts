@@ -10,9 +10,10 @@ describe("runtime configuration", () => {
   it("reports optional provider capabilities without exposing secrets", () => {
     expect(getRuntimeCapabilities({ TURSO_DATABASE_URL: "file:./data/pivot.db", GEMINI_API_KEY: "secret" })).toMatchObject({
       persistence: "sqlite",
-      recommendations: "gemini-with-fallback",
+      recommendations: "deterministic-fallback",
       accounts: "anonymous-only",
     });
+    expect(getRuntimeCapabilities({ GEMINI_API_KEY: "secret", ENABLE_GEMINI_RECOMMENDATIONS: "true" }).recommendations).toBe("gemini-with-fallback");
     expect(getRuntimeCapabilities({ AUTH_SECRET: "set" }).authPartiallyConfigured).toBe(true);
   });
 });
