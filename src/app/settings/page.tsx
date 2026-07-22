@@ -79,7 +79,7 @@ export default function SettingsPage() {
               {contextTags.length ? <div className="goal-list">{contextTags.map((tag) => <span className="goal-pill" key={tag}>{tag}<button type="button" aria-label={`Remove ${tag}`} onClick={() => removeTag(tag)}><Icon name="close" size={14} /></button></span>)}</div> : <div className="empty-state">Custom tags will appear after you add one during an urge.</div>}
             </section>
           </div>
-          <aside className="settings-side-column">
+          <aside className="settings-side-column" aria-label="Account and privacy">
             <section className="settings-section">
               <div className="settings-section-heading">
                 <div><span className="card-kicker">Account</span><h2>{account.authenticated ? `Signed in as @${account.user?.login}` : "Anonymous by default"}</h2></div>

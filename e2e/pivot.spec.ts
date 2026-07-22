@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { createClient } from "@libsql/client";
+import AxeBuilder from "@axe-core/playwright";
 
 async function createBasicPivot(page: import("@playwright/test").Page, goal = "late night scrolling") {
   await page.goto("/onboarding");
@@ -499,4 +500,12 @@ test("security headers are present", async ({ request }) => {
   expect(response.headers()["x-content-type-options"]).toBe("nosniff");
   expect(response.headers()["x-frame-options"]).toBe("DENY");
   expect(response.headers()["content-security-policy"]).toContain("frame-ancestors 'none'");
+});
+
+test("primary pages have no automated accessibility violations", async ({ page }) => {
+  for (const path of ["/onboarding", "/", "/settings"]) {
+    await page.goto(path);
+    const results = await new AxeBuilder({ page }).analyze();
+    expect(results.violations, `${path}: ${results.violations.map((violation) => `${violation.id} - ${violation.help}`).join(", ")}`).toEqual([]);
+  }
 });

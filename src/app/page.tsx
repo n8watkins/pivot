@@ -414,7 +414,7 @@ export default function Home() {
 
       {screen === "urge" && (
         <section className="flow-screen urge-screen">
-          <Progress step={1} total={3} />
+          <Progress step={1} total={3} label="Pivot flow progress" />
           <p className="eyebrow">Right now</p>
           <h1>What’s this moment like?</h1>
           <p className="lede">A little context helps me find a better fit. You can skip this.</p>
@@ -450,7 +450,7 @@ export default function Home() {
 
       {screen === "recommendation" && (
         <section className="flow-screen">
-          <Progress step={2} total={3} />
+          <Progress step={2} total={3} label="Pivot flow progress" />
           <p className="eyebrow">A gentle pivot</p>
           <h1>Try this for {primary.duration}.</h1>
           <p className="lede">Based on what you’ve shared, this is a simple place to start.</p>
@@ -499,7 +499,7 @@ export default function Home() {
 
       {screen === "followup" && (
         <section className="flow-screen">
-          <Progress step={3} total={3} />
+          <Progress step={3} total={3} label="Pivot flow progress" />
           {!followupOutcome ? (
             <>
               <p className="eyebrow">A quick check-in</p>

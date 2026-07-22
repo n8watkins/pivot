@@ -150,8 +150,8 @@ export function ReplacementIcon({ name }: { name: string }) {
   return <svg className="replacement-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={paths[name] ?? paths.custom} /></svg>;
 }
 
-export function Progress({ step, total = 3 }: { step: number; total?: number }) {
-  return <div className="progress" role="progressbar" aria-label="Setup progress" aria-valuemin={1} aria-valuemax={total} aria-valuenow={step} aria-valuetext={`Step ${step} of ${total}`}><span>{step}</span><div className="progress-track"><i style={{ width: `${(step / total) * 100}%` }} /></div><span>{total}</span></div>;
+export function Progress({ step, total = 3, label = "Progress" }: { step: number; total?: number; label?: string }) {
+  return <div className="progress" role="progressbar" aria-label={label} aria-valuemin={1} aria-valuemax={total} aria-valuenow={step} aria-valuetext={`Step ${step} of ${total}`}><span>{step}</span><div className="progress-track"><i style={{ width: `${(step / total) * 100}%` }} /></div><span>{total}</span></div>;
 }
 
 export function ReplacementChoice({ item, selected, onToggle }: { item: ReplacementOption & { icon: string }; selected: boolean; onToggle: () => void }) {

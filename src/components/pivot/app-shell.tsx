@@ -50,16 +50,16 @@ export function AppShell({
 
   if (focusMode) {
     return (
-      <main className="app-shell">
+      <div className="app-shell">
         <a className="skip-link" href="#main-content">Skip to main content</a>
         <div className="focus-frame">
           <div className="focus-topbar">
             <span className="brand"><Logo /><span>pivot</span></span>
             {focusLabel && <span className="focus-mode-label">{focusLabel}</span>}
           </div>
-          <div className="focus-content" id="main-content" tabIndex={-1}>{children}</div>
+          <main className="focus-content" id="main-content" tabIndex={-1}>{children}</main>
         </div>
-      </main>
+      </div>
     );
   }
 
@@ -103,10 +103,10 @@ export function AppShell({
   }
 
   return (
-    <main className="app-shell">
+    <div className="app-shell">
       <a className="skip-link" href="#main-content">Skip to main content</a>
       <div className={`shell ${rightRail ? "has-rail" : ""}`}>
-        <aside className="shell-sidebar">
+        <aside className="shell-sidebar" aria-label="Application sidebar">
           <Link className="brand shell-brand" href="/"><Logo /><span>pivot</span></Link>
 
           <div className="shell-pivots">
@@ -139,15 +139,15 @@ export function AppShell({
               <Link className="pivot-pill pivot-pill-add" href={newPivotHref}><Icon name="plus" size={14} /> New</Link>
             </div>
           )}
-          <div className="shell-content" id="main-content" tabIndex={-1}>{children}</div>
+          <main className="shell-content" id="main-content" tabIndex={-1}>{children}</main>
         </div>
 
-        {rightRail && <aside className="shell-rail">{rightRail}</aside>}
+        {rightRail && <aside className="shell-rail" aria-label="Pivot summary">{rightRail}</aside>}
 
         <nav className="shell-tabbar" aria-label="Mobile navigation">
           {utilityNav.map((item) => renderUtil(item, "shell-tab"))}
         </nav>
       </div>
-    </main>
+    </div>
   );
 }
