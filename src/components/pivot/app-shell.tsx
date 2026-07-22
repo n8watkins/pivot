@@ -17,6 +17,7 @@ export function AppShell({
   activePivotId,
   onSelectPivot,
   pivotCounts,
+  pivotSelectionDisabled = false,
   newPivotHref = "/settings/pivots/new",
   utilityNav,
   focusMode = false,
@@ -28,6 +29,7 @@ export function AppShell({
   activePivotId?: string | null;
   onSelectPivot?: (id: string) => void;
   pivotCounts?: Record<string, number>;
+  pivotSelectionDisabled?: boolean;
   newPivotHref?: string;
   utilityNav: UtilityNavItem[];
   focusMode?: boolean;
@@ -49,12 +51,13 @@ export function AppShell({
   if (focusMode) {
     return (
       <main className="app-shell">
+        <a className="skip-link" href="#main-content">Skip to main content</a>
         <div className="focus-frame">
           <div className="focus-topbar">
             <span className="brand"><Logo /><span>pivot</span></span>
             {focusLabel && <span className="focus-mode-label">{focusLabel}</span>}
           </div>
-          <div className="focus-content">{children}</div>
+          <div className="focus-content" id="main-content">{children}</div>
         </div>
       </main>
     );
@@ -75,7 +78,7 @@ export function AppShell({
     );
     if (onSelectPivot) {
       return (
-        <button type="button" key={pivot.id} className={`${className} ${on ? "on" : ""}`} aria-current={on ? "true" : undefined} onClick={() => onSelectPivot(pivot.id)}>
+        <button type="button" key={pivot.id} className={`${className} ${on ? "on" : ""}`} aria-current={on ? "true" : undefined} disabled={pivotSelectionDisabled} onClick={() => onSelectPivot(pivot.id)}>
           {inner}
         </button>
       );
@@ -101,6 +104,7 @@ export function AppShell({
 
   return (
     <main className="app-shell">
+      <a className="skip-link" href="#main-content">Skip to main content</a>
       <div className={`shell ${rightRail ? "has-rail" : ""}`}>
         <aside className="shell-sidebar">
           <Link className="brand shell-brand" href="/"><Logo /><span>pivot</span></Link>
@@ -135,7 +139,7 @@ export function AppShell({
               <Link className="pivot-pill pivot-pill-add" href={newPivotHref}><Icon name="plus" size={14} /> New</Link>
             </div>
           )}
-          <div className="shell-content">{children}</div>
+          <div className="shell-content" id="main-content">{children}</div>
         </div>
 
         {rightRail && <aside className="shell-rail">{rightRail}</aside>}

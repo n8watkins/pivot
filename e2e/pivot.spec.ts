@@ -7,6 +7,21 @@ async function createBasicPivot(page: import("@playwright/test").Page, goal = "l
   await page.getByRole("button", { name: /Finish setup/ }).click();
 }
 
+async function createTwoCustomPivots(page: import("@playwright/test").Page) {
+  await page.goto("/onboarding");
+  for (const option of ["Take a short walk", "Slow breathing", "Stretch your shoulders"]) await page.getByRole("button", { name: option }).click();
+  await page.getByLabel("Name this pivot").fill("Pivot alpha");
+  await page.getByLabel(/Add your own action/).fill("Alpha action");
+  await page.getByRole("button", { name: "Add" }).click();
+  await page.getByRole("button", { name: /Save.*pivot/ }).click();
+  for (const option of ["Take a short walk", "Slow breathing", "Stretch your shoulders"]) await page.getByRole("button", { name: option }).click();
+  await page.getByLabel("Name this pivot").fill("Pivot beta");
+  await page.getByLabel(/Add your own action/).fill("Beta action");
+  await page.getByRole("button", { name: "Add" }).click();
+  await page.getByRole("button", { name: /Save this pivot/ }).click();
+  await page.getByRole("button", { name: /Finish setup/ }).click();
+}
+
 test("new user can complete a pivot and review history", async ({ page }) => {
   await page.goto("/onboarding");
   await page.waitForTimeout(500);
@@ -132,6 +147,67 @@ test("switching pivots uses the selected pivot replacement set", async ({ page }
   await page.getByRole("button", { name: /I’m having an urge/ }).click();
   await page.getByRole("button", { name: "Skip and show me something" }).click();
   await expect(page.getByRole("heading", { name: "Read one page" })).toBeVisible();
+});
+
+test("selected pivot and History survive refresh", async ({ page }) => {
+  await createTwoCustomPivots(page);
+  await page.getByRole("button", { name: "Pivot beta", exact: true }).click();
+  await expect(page).toHaveURL(/pivot=/);
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Pivot beta" })).toBeVisible();
+  await page.getByRole("button", { name: "History" }).click();
+  await expect(page).toHaveURL(/screen=history/);
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Small moments count." })).toBeVisible();
+});
+
+test("switching pivots in History filters the visible entries", async ({ page }) => {
+  await createTwoCustomPivots(page);
+  await page.getByRole("button", { name: /I’m having an urge/ }).click();
+  await page.getByRole("button", { name: "Skip and show me something" }).click();
+  await page.getByRole("button", { name: /Start this action/ }).click();
+  await page.getByRole("button", { name: /I’m done for now/ }).click();
+  await page.getByRole("button", { name: "Much lighter" }).click();
+  await page.getByRole("button", { name: "Yes, it helped" }).click();
+  await page.getByRole("button", { name: "History" }).click();
+  await expect(page.getByText("Alpha action")).toBeVisible();
+  await page.getByRole("button", { name: "Pivot beta", exact: true }).click();
+  await expect(page).toHaveURL(/historyPivot=/);
+  await expect(page.getByText("No check-ins for this pivot yet.")).toBeVisible();
+  await expect(page.getByText("Alpha action")).not.toBeVisible();
+});
+
+test("stale recommendations cannot cross pivot boundaries", async ({ page }) => {
+  await createTwoCustomPivots(page);
+  await page.route("**/api/recommendation", async (route) => {
+    const body = route.request().postDataJSON();
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ replacementId: body.replacements[0].id, reason: "Reason calculated for alpha.", firstStep: "Begin alpha.", alternatives: [], safety: "safe", source: "gemini" }) });
+  });
+  await page.getByRole("button", { name: /I’m having an urge/ }).click();
+  await page.getByRole("button", { name: "Skip and show me something" }).click();
+  await expect(page.getByRole("button", { name: "Pivot beta", exact: true })).toBeDisabled();
+  await page.getByRole("button", { name: "Pause space" }).click();
+  await page.waitForTimeout(650);
+  await expect(page.getByRole("heading", { name: "Ready when you are." })).toBeVisible();
+  await expect(page.getByText("Reason calculated for alpha.")).not.toBeVisible();
+});
+
+test("starting an action hides pivot navigation until persistence completes", async ({ page }) => {
+  await createTwoCustomPivots(page);
+  await page.getByRole("button", { name: /I’m having an urge/ }).click();
+  await page.getByRole("button", { name: "Skip and show me something" }).click();
+  await page.route("**/api/intervention", async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    await route.continue();
+  });
+  await page.getByRole("button", { name: /Start this action/ }).click();
+  await expect(page.getByText("Starting action")).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Main navigation" })).not.toBeVisible();
+  await expect(page.getByText("Action in progress")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Alpha action" })).toBeVisible();
+  const state = await page.evaluate(() => fetch("/api/state").then((response) => response.json()));
+  expect(state.active.pivotId).toBe(state.pivots.find((pivot: { goal: string }) => pivot.goal === "Pivot alpha").id);
 });
 
 test("structured recommendation controls reason, first step, and alternatives", async ({ page }) => {

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { replacements, type Replacement } from "@/components/pivot/data";
 import { AppShell, type UtilityNavItem } from "@/components/pivot/app-shell";
 import { PivotStatsRail } from "@/components/pivot/pivot-stats-rail";
@@ -25,7 +25,24 @@ function formatTimer(seconds: number) {
   return `${minutes}:${String(seconds % 60).padStart(2, "0")}`;
 }
 
+function appHref(pivotId: string | null, view: "home" | "history" = "home", historyFilter = "all") {
+  const params = new URLSearchParams();
+  if (pivotId) params.set("pivot", pivotId);
+  if (view === "history") {
+    params.set("screen", "history");
+    if (historyFilter !== "all") params.set("historyPivot", historyFilter);
+  }
+  const query = params.toString();
+  return query ? `/?${query}` : "/";
+}
+
+function updateAppUrl(href: string, mode: "push" | "replace") {
+  window.history[mode === "push" ? "pushState" : "replaceState"](null, "", href);
+}
+
 export default function Home() {
+  const activePivotIdRef = useRef<string | null>(null);
+  const flowRequestVersionRef = useRef(0);
   const [screen, setScreen] = useState<Screen>("home");
   const [goal, setGoal] = useState("");
   const [selected, setSelected] = useState<string[]>(["walk", "breathe", "stretch"]);
@@ -74,11 +91,14 @@ export default function Home() {
         setGoal(snapshot.goals?.[0] ?? snapshot.goal ?? "");
         setCustomReplacements(serverCustom);
         setPivots(serverPivots);
+        activePivotIdRef.current = initialPivotId;
         setActivePivotId(initialPivotId);
         if (serverPivots[0]) setSelected((serverPivots.find((pivot) => pivot.id === initialPivotId) ?? serverPivots[0]).replacements.map((item) => item.id));
         else if (replacementIds.length) setSelected(replacementIds);
         setHistory(snapshot.history ?? []);
         setCustomContexts(snapshot.contextTags ?? []);
+        const requestedHistoryPivot = params.get("historyPivot");
+        if (requestedHistoryPivot && (snapshot.history ?? []).some((event) => event.pivotId === requestedHistoryPivot)) setHistoryFilter(requestedHistoryPivot);
         if (snapshot.active?.replacementId && recoveredPivotId) {
           setModelPrimaryId(snapshot.active.replacementId);
           setRecommendation({ replacementId: snapshot.active.replacementId, reason: snapshot.active.reason || "This is one of your approved actions.", firstStep: snapshot.active.firstStep || "Begin with one small step.", alternatives: [], source: snapshot.active.source ?? "fallback" });
@@ -93,6 +113,35 @@ export default function Home() {
       .finally(() => { if (!cancelled) setStateReady(true); });
     return () => { cancelled = true; };
   }, []);
+
+  useEffect(() => {
+    function syncRouteFromHistory() {
+      if (activeStartedAt || isStarting) return;
+      const params = new URLSearchParams(window.location.search);
+      const requestedPivotId = params.get("pivot");
+      const nextPivot = requestedPivotId ? pivots.find((pivot) => pivot.id === requestedPivotId) : pivots[0];
+      if (nextPivot) {
+        flowRequestVersionRef.current += 1;
+        activePivotIdRef.current = nextPivot.id;
+        setActivePivotId(nextPivot.id);
+        setSelected(nextPivot.replacements.map((item) => item.id));
+        setModelPrimaryId(null);
+        setRecommendation(null);
+        setIsRecommending(false);
+      }
+      if (params.get("screen") === "history") {
+        const requestedFilter = params.get("historyPivot");
+        setHistoryFilter(requestedFilter && history.some((event) => event.pivotId === requestedFilter) ? requestedFilter : "all");
+        setScreen("history");
+      } else {
+        setHistoryFilter("all");
+        setScreen("home");
+      }
+    }
+
+    window.addEventListener("popstate", syncRouteFromHistory);
+    return () => window.removeEventListener("popstate", syncRouteFromHistory);
+  }, [activeStartedAt, history, isStarting, pivots]);
 
   const activePivot = pivots.find((pivot) => pivot.id === activePivotId);
   const availableReplacements = useMemo(() => activePivot?.replacements ?? [...replacements, ...customReplacements], [activePivot, customReplacements]);
@@ -118,6 +167,8 @@ export default function Home() {
 
   async function requestRecommendation() {
     if (!activePivot || !approved.length || isRecommending) return;
+    const requestVersion = ++flowRequestVersionRef.current;
+    const requestedPivotId = activePivot.id;
     setIsRecommending(true);
     setFlowError("");
     setRecommendationSource("fallback");
@@ -132,9 +183,11 @@ export default function Home() {
     const response = await fetch("/api/recommendation", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      signal: AbortSignal.timeout(6000),
       body: JSON.stringify({ replacements: approved, context: recommendationContext, pivotId: activePivot.id }),
     }).catch(() => null);
     const result = response?.ok ? await response.json().catch(() => null) : null;
+    if (flowRequestVersionRef.current !== requestVersion || activePivotIdRef.current !== requestedPivotId) return;
     setIsRecommending(false);
     if (result?.route === "support" || result?.route === "specialized") {
       setSafetyKind(result.route === "support" ? "high-risk" : "specialized");
@@ -151,6 +204,8 @@ export default function Home() {
 
   async function startAction(item: Replacement) {
     if (!activePivot || isStarting) return;
+    const requestVersion = ++flowRequestVersionRef.current;
+    const requestedPivot = activePivot;
     setIsStarting(true);
     setFlowError("");
     const chosenMatchesRecommendation = recommendation?.replacementId === item.id;
@@ -160,9 +215,17 @@ export default function Home() {
     const response = await fetch("/api/intervention", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      signal: AbortSignal.timeout(6000),
       body: JSON.stringify({ pivotId: activePivot.id, replacementId: item.id, reason: chosenReason, firstStep: chosenFirstStep, source: chosenSource }),
     }).catch(() => null);
     const payload = response?.ok ? await response.json().catch(() => null) : null;
+    if (flowRequestVersionRef.current !== requestVersion) {
+      setIsStarting(false);
+      return;
+    }
+    activePivotIdRef.current = requestedPivot.id;
+    setActivePivotId(requestedPivot.id);
+    setSelected(requestedPivot.replacements.map((replacement) => replacement.id));
     if (!response?.ok) setFlowError("This action could not be saved for refresh recovery, but you can still continue with it.");
     setRecommendation({ replacementId: item.id, reason: chosenReason, firstStep: chosenFirstStep, alternatives: [], source: chosenSource });
     setRecommendationSource(chosenSource);
@@ -171,6 +234,7 @@ export default function Home() {
     setActiveStartedAt(payload?.active?.startedAt ?? new Date().toISOString());
     setIsStarting(false);
     setScreen("active");
+    updateAppUrl(appHref(requestedPivot.id), "replace");
   }
 
   async function complete(outcome: string, helpful: boolean) {
@@ -209,12 +273,16 @@ export default function Home() {
     setContext("");
     setContextNote("");
     setUrge(7);
+    updateAppUrl(appHref(activePivot.id), "replace");
   }
 
   function reset() {
+    flowRequestVersionRef.current += 1;
+    setIsRecommending(false);
     setScreen("home");
     setFlowError("");
     setFollowupOutcome("");
+    updateAppUrl(appHref(activePivotIdRef.current), "push");
   }
 
   function addContextTag() {
@@ -229,14 +297,38 @@ export default function Home() {
   }
 
   function choosePivot(id: string) {
+    if (isStarting) return;
     const pivot = pivots.find((item) => item.id === id);
+    if (!pivot) return;
+    flowRequestVersionRef.current += 1;
+    setIsRecommending(false);
+    activePivotIdRef.current = id;
     setActivePivotId(id);
-    setSelected(pivot?.replacements.map((item) => item.id) ?? []);
+    setSelected(pivot.replacements.map((item) => item.id));
     setModelPrimaryId(null);
     setRecommendation(null);
     setFlowError("");
-    if (screen !== "history") setScreen("home");
-    localStorage.setItem("pivot-state", JSON.stringify({ goal, selected: pivot?.replacements.map((item) => item.id) ?? [], customReplacements, pivots, activePivotId: id, customContexts, history }));
+    if (screen === "history") {
+      setHistoryFilter(id);
+      updateAppUrl(appHref(id, "history", id), "replace");
+    } else {
+      setScreen("home");
+      updateAppUrl(appHref(id), "replace");
+    }
+    localStorage.setItem("pivot-state", JSON.stringify({ goal, selected: pivot.replacements.map((item) => item.id), customReplacements, pivots, activePivotId: id, customContexts, history }));
+  }
+
+  function showHistory() {
+    flowRequestVersionRef.current += 1;
+    setIsRecommending(false);
+    setHistoryFilter("all");
+    setScreen("history");
+    updateAppUrl(appHref(activePivotIdRef.current, "history"), "push");
+  }
+
+  function filterHistory(nextFilter: string) {
+    setHistoryFilter(nextFilter);
+    updateAppUrl(appHref(activePivotIdRef.current, "history", nextFilter), "replace");
   }
 
   function formatHistoryDate(value: string) {
@@ -253,7 +345,7 @@ export default function Home() {
 
   const utilityNav: UtilityNavItem[] = [
     { kind: "action", label: "Pause space", icon: "home", onClick: reset, active: screen === "home" },
-    { kind: "action", label: "History", icon: "history", onClick: () => { setHistoryFilter("all"); setScreen("history"); }, active: screen === "history" },
+    { kind: "action", label: "History", icon: "history", onClick: showHistory, active: screen === "history" },
     { kind: "link", label: "Settings", icon: "settings", href: "/settings" },
   ];
 
@@ -263,9 +355,10 @@ export default function Home() {
       activePivotId={activePivotId}
       onSelectPivot={choosePivot}
       pivotCounts={pivotCounts}
+      pivotSelectionDisabled={isRecommending || isStarting}
       utilityNav={utilityNav}
-      focusMode={screen === "active" || screen === "followup"}
-      focusLabel={screen === "active" ? "Action in progress" : screen === "followup" ? "Check-in in progress" : undefined}
+      focusMode={isStarting || screen === "active" || screen === "followup"}
+      focusLabel={isStarting ? "Starting action" : screen === "active" ? "Action in progress" : screen === "followup" ? "Check-in in progress" : undefined}
       rightRail={screen === "home" && activePivot ? <PivotStatsRail count={activePivotId ? (pivotCounts[activePivotId] ?? 0) : 0} recent={activeRecent} /> : undefined}
     >
       {screen === "home" && (
@@ -426,7 +519,7 @@ export default function Home() {
             <h1>Small moments count.</h1>
             <p className="lede">A quiet record of the times you chose a different next step.</p>
           </div>
-          {historyPivots.length > 1 && <div className="history-filters" aria-label="Filter History by pivot"><button type="button" className={historyFilter === "all" ? "active" : ""} onClick={() => setHistoryFilter("all")}>All</button>{historyPivots.map((pivot) => <button type="button" className={historyFilter === pivot.id ? "active" : ""} key={pivot.id} onClick={() => setHistoryFilter(pivot.id)}>{pivot.label}</button>)}</div>}
+          {historyPivots.length > 1 && <div className="history-filters" aria-label="Filter History by pivot"><button type="button" aria-pressed={historyFilter === "all"} className={historyFilter === "all" ? "active" : ""} onClick={() => filterHistory("all")}>All</button>{historyPivots.map((pivot) => <button type="button" aria-pressed={historyFilter === pivot.id} className={historyFilter === pivot.id ? "active" : ""} key={pivot.id} onClick={() => filterHistory(pivot.id)}>{pivot.label}</button>)}</div>}
           <div className="history-stat"><strong>{visibleHistory.length}</strong><span>redirected {visibleHistory.length === 1 ? "moment" : "moments"}</span></div>
           {flowError && <p className="form-status" role="status">{flowError}</p>}
           {visibleHistory.length ? (
@@ -434,7 +527,7 @@ export default function Home() {
               {visibleHistory.map((item, index) => <article key={item.id ?? `${item.date}-${index}`}><span className="history-dot"><Icon name="sparkle" size={16} /></span><div><strong>{item.choice}</strong><p>{item.pivotGoal && `${item.pivotGoal} · `}{item.outcome} · {formatHistoryDate(item.date)}</p></div>{item.id && <button type="button" className="history-delete" aria-label={`Delete ${item.choice} History entry`} onClick={() => removeHistoryEvent(item.id!)}><Icon name="close" size={18} /></button>}</article>)}
             </div>
           ) : <div className="empty-state">{historyFilter === "all" ? "Your first entry will appear here after a pivot." : "No check-ins for this pivot yet."}</div>}
-          <button type="button" className="primary-button full history-back" onClick={() => setScreen("home")}>Back to pause space</button>
+          <button type="button" className="primary-button full history-back" onClick={reset}>Back to pause space</button>
         </section>
       )}
 
@@ -457,7 +550,7 @@ export default function Home() {
               <div className="support-card"><strong>You can still take one small step</strong><p>Consider contacting a healthcare professional or someone you trust who can help you find specialized support.</p></div>
             </>
           )}
-          <button type="button" className="quiet-button" onClick={() => setScreen("home")}>Return to Pivot</button>
+          <button type="button" className="quiet-button" onClick={reset}>Return to Pivot</button>
         </section>
       )}
     </AppShell>
