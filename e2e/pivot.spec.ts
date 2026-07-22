@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { createClient } from "@libsql/client";
 
 async function createBasicPivot(page: import("@playwright/test").Page, goal = "late night scrolling") {
   await page.goto("/onboarding");
@@ -22,6 +23,18 @@ async function createTwoCustomPivots(page: import("@playwright/test").Page) {
   await page.getByRole("button", { name: /Finish setup/ }).click();
 }
 
+async function executeWhenDatabaseIsAvailable(db: ReturnType<typeof createClient>, statement: { sql: string; args: string[] }) {
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    try {
+      return await db.execute(statement);
+    } catch (error) {
+      if (!(error instanceof Error) || !error.message.includes("SQLITE_BUSY") || attempt === 19) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+  }
+  throw new Error("Database did not become available");
+}
+
 test("new user can complete a pivot and review history", async ({ page }) => {
   await page.goto("/onboarding");
   await page.waitForTimeout(500);
@@ -40,7 +53,7 @@ test("new user can complete a pivot and review history", async ({ page }) => {
   await page.getByRole("button", { name: /I’m done for now/ }).click();
   await expect(page.getByText("Check-in in progress")).toBeVisible();
   await page.getByRole("button", { name: "Much lighter" }).click();
-  await page.getByRole("button", { name: "Yes, it helped" }).click();
+  await Promise.all([page.waitForResponse("**/api/closed-loop"), page.getByRole("button", { name: "Yes, it helped" }).click()]);
   await expect(page.getByRole("status")).toContainText("Check-in saved");
   await page.getByRole("button", { name: /History/ }).click();
   await expect(page.getByRole("heading", { name: "Small moments count." })).toBeVisible();
@@ -296,6 +309,38 @@ test("individual History entries can be deleted", async ({ page }) => {
   await page.getByRole("button", { name: /History/ }).click();
   await page.getByRole("button", { name: /Delete Take a short walk History entry/ }).click();
   await expect(page.getByText("Your first entry will appear here after a pivot.")).toBeVisible();
+});
+
+test("a completed and deleted check-in leaves no intervention records behind", async ({ page }) => {
+  await createBasicPivot(page);
+  const sessionId = (await page.context().cookies()).find((cookie) => cookie.name === "pivot_session")?.value;
+  expect(sessionId).toBeTruthy();
+
+  await page.getByRole("button", { name: /I’m having an urge/ }).click();
+  await page.getByRole("button", { name: "Skip and show me something" }).click();
+  await page.getByRole("button", { name: /Start this action/ }).click();
+  await page.getByRole("button", { name: /I’m done for now/ }).click();
+  await page.getByRole("button", { name: "Much lighter" }).click();
+  await page.getByRole("button", { name: "Yes, it helped" }).click();
+
+  const db = createClient({ url: "file:./data/pivot-e2e.db" });
+  const completed = await executeWhenDatabaseIsAvailable(db, {
+    sql: "SELECT COUNT(*) AS count FROM active_interventions WHERE session_id = ?",
+    args: [sessionId!],
+  });
+  expect(Number(completed.rows[0].count)).toBe(1);
+
+  await page.getByRole("button", { name: "History" }).click();
+  await Promise.all([page.waitForResponse("**/api/history/**"), page.getByRole("button", { name: /Delete Take a short walk History entry/ }).click()]);
+
+  const counts = await Promise.all([
+    executeWhenDatabaseIsAvailable(db, { sql: "SELECT COUNT(*) AS count FROM active_interventions WHERE session_id = ?", args: [sessionId!] }),
+    executeWhenDatabaseIsAvailable(db, { sql: "SELECT COUNT(*) AS count FROM urge_sessions WHERE session_id = ?", args: [sessionId!] }),
+    executeWhenDatabaseIsAvailable(db, { sql: "SELECT COUNT(*) AS count FROM recommendations WHERE urge_session_id IN (SELECT id FROM urge_sessions WHERE session_id = ?)", args: [sessionId!] }),
+    executeWhenDatabaseIsAvailable(db, { sql: "SELECT COUNT(*) AS count FROM follow_ups WHERE intervention_id IN (SELECT id FROM active_interventions WHERE session_id = ?)", args: [sessionId!] }),
+  ]);
+  expect(counts.map((result) => Number(result.rows[0].count))).toEqual([0, 0, 0, 0]);
+  db.close();
 });
 
 test("History keeps its pivot and action labels after that pivot is deleted", async ({ page }) => {

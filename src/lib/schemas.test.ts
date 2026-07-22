@@ -10,14 +10,14 @@ describe("server input contracts", () => {
   });
 
   it("bounds closed-loop inputs", () => {
-    expect(closedLoopInputSchema.safeParse({ pivotId: "pivot-evening", replacementId: "walk", intensity: 7, source: "fallback", outcome: "Much lighter", helpful: true }).success).toBe(true);
-    expect(closedLoopInputSchema.safeParse({ pivotId: "pivot-evening", replacementId: "walk", intensity: 99, source: "fallback", outcome: "x", helpful: true }).success).toBe(false);
+    expect(closedLoopInputSchema.safeParse({ interventionId: "d9428888-122b-11e1-b85c-61cd3cbb3210", pivotId: "pivot-evening", replacementId: "walk", outcome: "Much lighter", helpful: true }).success).toBe(true);
+    expect(closedLoopInputSchema.safeParse({ interventionId: "not-an-id", pivotId: "pivot-evening", replacementId: "walk", outcome: "x", helpful: true }).success).toBe(false);
   });
 
   it("requires a pivot boundary for recommendations and interventions", () => {
     expect(recommendationInputSchema.safeParse({ pivotId: "pivot-evening", replacements }).success).toBe(true);
     expect(recommendationInputSchema.safeParse({ replacements }).success).toBe(false);
-    expect(interventionInputSchema.safeParse({ pivotId: "pivot-evening", replacementId: "walk" }).success).toBe(true);
+    expect(interventionInputSchema.safeParse({ pivotId: "pivot-evening", replacementId: "walk", intensity: 7 }).success).toBe(true);
   });
 
   it("allows only known privacy event types", () => {

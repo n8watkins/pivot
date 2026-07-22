@@ -80,6 +80,16 @@ const migrations = [
       "ALTER TABLE active_interventions ADD COLUMN source TEXT NOT NULL DEFAULT 'fallback'",
     ],
   },
+  {
+    version: 9,
+    statements: [
+      "INSERT OR IGNORE INTO urge_sessions (id, session_id, pivot_id, pivot_label, intensity, context_type, created_at) SELECT 'legacy-urge-' || a.id, a.session_id, a.pivot_id, COALESCE(p.label, 'Past pivot'), 1, '', a.started_at FROM active_interventions a LEFT JOIN recommendations r ON r.id = a.recommendation_id LEFT JOIN pivots p ON p.id = a.pivot_id AND p.session_id = a.session_id WHERE r.id IS NULL AND a.completed_at IS NULL",
+      "INSERT OR IGNORE INTO recommendations (id, urge_session_id, replacement_id, replacement_label, source, reason, first_step, created_at) SELECT a.recommendation_id, 'legacy-urge-' || a.id, a.replacement_id, COALESCE((SELECT rp.label FROM replacements rp WHERE rp.session_id = a.session_id AND rp.pivot_id = a.pivot_id AND (rp.id = a.replacement_id OR substr(rp.id, instr(rp.id, ':') + 1) = a.replacement_id) LIMIT 1), 'Past action'), a.source, a.reason, a.first_step, a.started_at FROM active_interventions a LEFT JOIN recommendations r ON r.id = a.recommendation_id WHERE r.id IS NULL AND a.completed_at IS NULL",
+      "DELETE FROM active_interventions WHERE completed_at IS NOT NULL AND recommendation_id NOT IN (SELECT id FROM recommendations)",
+      "DELETE FROM follow_ups WHERE rowid NOT IN (SELECT MIN(rowid) FROM follow_ups GROUP BY intervention_id)",
+      "CREATE UNIQUE INDEX IF NOT EXISTS idx_follow_ups_unique_intervention ON follow_ups(intervention_id)",
+    ],
+  },
 ] as const;
 
 async function hasColumn(db: Client, table: string, column: string) {

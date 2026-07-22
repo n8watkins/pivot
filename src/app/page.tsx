@@ -57,8 +57,8 @@ export default function Home() {
   const [customContexts, setCustomContexts] = useState<string[]>([]);
   const [modelPrimaryId, setModelPrimaryId] = useState<string | null>(null);
   const [recommendation, setRecommendation] = useState<RecommendationResult | null>(null);
-  const [recommendationSource, setRecommendationSource] = useState<"gemini" | "fallback">("fallback");
   const [activeStartedAt, setActiveStartedAt] = useState<string | null>(null);
+  const [activeInterventionId, setActiveInterventionId] = useState<string | null>(null);
   const [timerRemaining, setTimerRemaining] = useState<number | null>(null);
   const [followupOutcome, setFollowupOutcome] = useState("");
   const [historyFilter, setHistoryFilter] = useState("all");
@@ -74,7 +74,7 @@ export default function Home() {
     let cancelled = false;
     void fetch("/api/state")
       .then((response) => response.ok ? response.json() : null)
-      .then((snapshot: { goal?: string; goals?: string[]; replacements?: Omit<Replacement, "icon">[]; pivots?: { id: string; goal: string; replacements: Omit<Replacement, "icon">[] }[]; contextTags?: string[]; history?: HistoryEvent[]; active?: { pivotId?: string; replacementId: string; reason?: string; firstStep?: string; source?: "gemini" | "fallback"; startedAt: string } } | null) => {
+      .then((snapshot: { goal?: string; goals?: string[]; replacements?: Omit<Replacement, "icon">[]; pivots?: { id: string; goal: string; replacements: Omit<Replacement, "icon">[] }[]; contextTags?: string[]; history?: HistoryEvent[]; active?: { id: string; pivotId?: string; replacementId: string; reason?: string; firstStep?: string; source?: "gemini" | "fallback"; startedAt: string } } | null) => {
         if (cancelled || !snapshot) return;
         const serverPivots = snapshot.pivots?.map((pivot) => ({
           ...pivot,
@@ -100,9 +100,9 @@ export default function Home() {
         const requestedHistoryPivot = params.get("historyPivot");
         if (requestedHistoryPivot && (snapshot.history ?? []).some((event) => event.pivotId === requestedHistoryPivot)) setHistoryFilter(requestedHistoryPivot);
         if (snapshot.active?.replacementId && recoveredPivotId) {
+          setActiveInterventionId(snapshot.active.id);
           setModelPrimaryId(snapshot.active.replacementId);
           setRecommendation({ replacementId: snapshot.active.replacementId, reason: snapshot.active.reason || "This is one of your approved actions.", firstStep: snapshot.active.firstStep || "Begin with one small step.", alternatives: [], source: snapshot.active.source ?? "fallback" });
-          setRecommendationSource(snapshot.active.source ?? "fallback");
           setActiveStartedAt(snapshot.active.startedAt);
           setScreen("active");
         } else if (params.get("screen") === "history") {
@@ -171,7 +171,6 @@ export default function Home() {
     const requestedPivotId = activePivot.id;
     setIsRecommending(true);
     setFlowError("");
-    setRecommendationSource("fallback");
     const fallback: RecommendationResult = {
       replacementId: approved[0].id,
       reason: "It is an approved option that can change the shape of this moment.",
@@ -198,7 +197,6 @@ export default function Home() {
     if (!result?.replacementId) setFlowError("Pivot could not reach the recommendation service, so it chose a safe approved action locally.");
     setRecommendation(next);
     setModelPrimaryId(next.replacementId);
-    setRecommendationSource(next.source === "gemini" ? "gemini" : "fallback");
     setScreen("recommendation");
   }
 
@@ -216,7 +214,7 @@ export default function Home() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       signal: AbortSignal.timeout(6000),
-      body: JSON.stringify({ pivotId: activePivot.id, replacementId: item.id, reason: chosenReason, firstStep: chosenFirstStep, source: chosenSource }),
+      body: JSON.stringify({ pivotId: activePivot.id, replacementId: item.id, reason: chosenReason, firstStep: chosenFirstStep, source: chosenSource, intensity: urge, contextType: context }),
     }).catch(() => null);
     const payload = response?.ok ? await response.json().catch(() => null) : null;
     if (flowRequestVersionRef.current !== requestVersion) {
@@ -228,9 +226,9 @@ export default function Home() {
     setSelected(requestedPivot.replacements.map((replacement) => replacement.id));
     if (!response?.ok) setFlowError("This action could not be saved for refresh recovery, but you can still continue with it.");
     setRecommendation({ replacementId: item.id, reason: chosenReason, firstStep: chosenFirstStep, alternatives: [], source: chosenSource });
-    setRecommendationSource(chosenSource);
     setModelPrimaryId(item.id);
     setTimerRemaining(null);
+    setActiveInterventionId(payload?.active?.id ?? null);
     setActiveStartedAt(payload?.active?.startedAt ?? new Date().toISOString());
     setIsStarting(false);
     setScreen("active");
@@ -238,20 +236,19 @@ export default function Home() {
   }
 
   async function complete(outcome: string, helpful: boolean) {
-    if (!activePivot || isCompleting) return;
+    if (!activePivot || !activeInterventionId || isCompleting) {
+      if (!activeInterventionId) setFlowError("This action was not saved. Return home and start it again before checking in.");
+      return;
+    }
     setIsCompleting(true);
     setFlowError("");
     const response = await fetch("/api/closed-loop", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        interventionId: activeInterventionId,
         pivotId: activePivot.id,
         replacementId: primary.id,
-        intensity: urge,
-        contextType: context,
-        reason: recommendationMatchesPrimary && recommendation ? recommendation.reason : primary.detail,
-        firstStep,
-        source: recommendationSource,
         outcome,
         helpful,
       }),
@@ -268,6 +265,7 @@ export default function Home() {
     setCompletionMessage(outcome === "I went back to it" ? "Recorded without judgment. The next moment is a fresh chance." : "Check-in saved. Small moments count.");
     setScreen("home");
     setActiveStartedAt(null);
+    setActiveInterventionId(null);
     setTimerRemaining(null);
     setFollowupOutcome("");
     setContext("");

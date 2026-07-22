@@ -15,10 +15,12 @@ export type PivotSnapshot = {
 
 const memoryState = new Map<string, PivotSnapshot>();
 const memoryActive = new Map<string, { id: string; sessionId: string; pivotId: string; replacementId: string; reason: string; firstStep: string; source: "gemini" | "fallback"; startedAt: string }>();
+const memoryFollowUps = new Map<string, string>();
 
 export function clearMemoryPivotState(sessionId: string) {
   memoryState.delete(sessionId);
   memoryActive.delete(sessionId);
+  for (const [interventionId] of memoryFollowUps) if (interventionId.startsWith(`${sessionId}:`)) memoryFollowUps.delete(interventionId);
 }
 
 function publicReplacement(replacement: { pivotId?: string; id: string; name: string; detail: string; duration: string }) {
@@ -105,7 +107,7 @@ export async function deleteHistoryEvent(id: string) {
   return true;
 }
 
-export async function recordClosedLoop(input: { pivotId: string; replacementId: string; intensity: number; contextType: string; reason: string; firstStep: string; source: string; outcome: string; helpful: boolean }) {
+export async function recordClosedLoop(input: { interventionId: string; pivotId: string; replacementId: string; outcome: string; helpful: boolean }) {
   const sessionId = await ensureSession();
   const db = getDatabase();
   const snapshot = await getSnapshot();
@@ -113,38 +115,59 @@ export async function recordClosedLoop(input: { pivotId: string; replacementId: 
   const replacement = pivot?.replacements.find((option) => option.id === input.replacementId);
   if (!pivot || !replacement) throw new Error("Replacement is not approved for this pivot");
   if (!db) {
+    const completedKey = `${sessionId}:${input.interventionId}`;
+    const existingId = memoryFollowUps.get(completedKey);
+    if (existingId) return existingId;
+    const active = memoryActive.get(sessionId);
+    if (!active || active.id !== input.interventionId || active.pivotId !== input.pivotId || active.replacementId !== input.replacementId) throw new Error("Active intervention was not found");
     const eventId = randomUUID();
     const history = [{ id: eventId, pivotId: pivot.id, pivotGoal: pivot.goal, replacementId: input.replacementId, choice: replacement.name, outcome: input.outcome, helpful: input.helpful, date: new Date().toISOString() }, ...snapshot.history];
     memoryActive.delete(sessionId);
+    memoryFollowUps.set(completedKey, eventId);
     memoryState.set(sessionId, { ...snapshot, history, active: undefined });
     return eventId;
   }
   await initializeDatabase();
-  const urgeId = randomUUID();
-  const recommendationId = randomUUID();
-  const interventionId = randomUUID();
+  const existing = await db.execute({ sql: "SELECT f.id FROM follow_ups f JOIN active_interventions a ON a.id = f.intervention_id WHERE f.intervention_id = ? AND a.session_id = ?", args: [input.interventionId, sessionId] });
+  if (existing.rows[0]) return String(existing.rows[0].id);
+  const active = await db.execute({ sql: "SELECT id FROM active_interventions WHERE id = ? AND session_id = ? AND pivot_id = ? AND replacement_id = ? AND completed_at IS NULL", args: [input.interventionId, sessionId, input.pivotId, input.replacementId] });
+  if (!active.rows[0]) throw new Error("Active intervention was not found");
   const followUpId = randomUUID();
   const now = new Date().toISOString();
   await db.batch([
-    { sql: "INSERT INTO urge_sessions (id, session_id, pivot_id, pivot_label, intensity, context_type, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)", args: [urgeId, sessionId, pivot.id, pivot.goal, input.intensity, input.contextType, now] },
-    { sql: "INSERT INTO recommendations (id, urge_session_id, replacement_id, replacement_label, source, reason, first_step, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", args: [recommendationId, urgeId, input.replacementId, replacement.name, input.source, input.reason, input.firstStep, now] },
-    { sql: "INSERT INTO active_interventions (id, recommendation_id, session_id, pivot_id, replacement_id, started_at, completed_at) VALUES (?, ?, ?, ?, ?, ?, ?)", args: [interventionId, recommendationId, sessionId, pivot.id, input.replacementId, now, now] },
-    { sql: "INSERT INTO follow_ups (id, intervention_id, outcome, helpfulness, created_at) VALUES (?, ?, ?, ?, ?)", args: [followUpId, interventionId, input.outcome, input.helpful ? 1 : 0, now] },
+    { sql: "UPDATE active_interventions SET completed_at = ? WHERE id = ? AND session_id = ? AND completed_at IS NULL", args: [now, input.interventionId, sessionId] },
+    { sql: "INSERT OR IGNORE INTO follow_ups (id, intervention_id, outcome, helpfulness, created_at) VALUES (?, ?, ?, ?, ?)", args: [followUpId, input.interventionId, input.outcome, input.helpful ? 1 : 0, now] },
   ], "write");
-  await db.execute({ sql: "UPDATE active_interventions SET completed_at = ? WHERE session_id = ? AND pivot_id = ? AND replacement_id = ? AND completed_at IS NULL", args: [now, sessionId, pivot.id, input.replacementId] });
-  return followUpId;
+  const recorded = await db.execute({ sql: "SELECT id FROM follow_ups WHERE intervention_id = ?", args: [input.interventionId] });
+  if (!recorded.rows[0]) throw new Error("Follow-up could not be saved");
+  return String(recorded.rows[0].id);
 }
 
-export async function startIntervention(input: { replacementId: string; pivotId: string; reason: string; firstStep: string; source: "gemini" | "fallback" }) {
+export async function startIntervention(input: { replacementId: string; pivotId: string; reason: string; firstStep: string; source: "gemini" | "fallback"; intensity: number; contextType: string }) {
   const sessionId = await ensureSession();
   const snapshot = await getSnapshot();
-  if (!snapshot.pivots.find((pivot) => pivot.id === input.pivotId)?.replacements.some((replacement) => replacement.id === input.replacementId)) throw new Error("Replacement is not approved for this pivot");
+  const pivot = snapshot.pivots.find((option) => option.id === input.pivotId);
+  const replacement = pivot?.replacements.find((option) => option.id === input.replacementId);
+  if (!pivot || !replacement) throw new Error("Replacement is not approved for this pivot");
   const active = { id: randomUUID(), sessionId, ...input, startedAt: new Date().toISOString() };
   if (!getDatabase()) { memoryActive.set(sessionId, active); const snapshotWithActive = await getSnapshot(); memoryState.set(sessionId, { ...snapshotWithActive, active: { id: active.id, pivotId: input.pivotId, replacementId: input.replacementId, reason: input.reason, firstStep: input.firstStep, source: input.source, startedAt: active.startedAt } }); }
   else {
-    await getDatabase()!.execute({ sql: "INSERT INTO active_interventions (id, recommendation_id, session_id, pivot_id, replacement_id, reason, first_step, source, started_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", args: [active.id, randomUUID(), sessionId, input.pivotId, input.replacementId, input.reason, input.firstStep, input.source, active.startedAt] });
+    const db = getDatabase()!;
+    const urgeId = randomUUID();
+    const recommendationId = randomUUID();
+    await initializeDatabase();
+    await db.batch([
+      { sql: "DELETE FROM urge_sessions WHERE id IN (SELECT r.urge_session_id FROM recommendations r JOIN active_interventions a ON a.recommendation_id = r.id WHERE a.session_id = ? AND a.completed_at IS NULL)", args: [sessionId] },
+      { sql: "DELETE FROM recommendations WHERE id IN (SELECT recommendation_id FROM active_interventions WHERE session_id = ? AND completed_at IS NULL)", args: [sessionId] },
+      { sql: "DELETE FROM active_interventions WHERE session_id = ? AND completed_at IS NULL", args: [sessionId] },
+      { sql: "INSERT INTO urge_sessions (id, session_id, pivot_id, pivot_label, intensity, context_type, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)", args: [urgeId, sessionId, pivot.id, pivot.goal, input.intensity, input.contextType, active.startedAt] },
+      { sql: "INSERT INTO recommendations (id, urge_session_id, replacement_id, replacement_label, source, reason, first_step, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", args: [recommendationId, urgeId, replacement.id, replacement.name, input.source, input.reason, input.firstStep, active.startedAt] },
+      { sql: "INSERT INTO active_interventions (id, recommendation_id, session_id, pivot_id, replacement_id, reason, first_step, source, started_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", args: [active.id, recommendationId, sessionId, input.pivotId, input.replacementId, input.reason, input.firstStep, input.source, active.startedAt] },
+    ], "write");
   }
-  const { sessionId: _sessionId, ...publicActive } = active;
+  const { sessionId: _sessionId, intensity: _intensity, contextType: _contextType, ...publicActive } = active;
   void _sessionId;
+  void _intensity;
+  void _contextType;
   return publicActive;
 }
