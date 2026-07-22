@@ -17,6 +17,7 @@ import {
 const clients: ReturnType<typeof createClient>[] = [];
 const temporaryDirectories: string[] = [];
 const validPublicKey = Buffer.concat([Buffer.from([4]), Buffer.alloc(64, 7)]).toString("base64url");
+const validPrivateKey = Buffer.alloc(32, 5).toString("base64url");
 const validP256dh = Buffer.concat([Buffer.from([4]), Buffer.alloc(64, 9)]).toString("base64url");
 const validAuth = Buffer.alloc(16, 3).toString("base64url");
 
@@ -50,7 +51,7 @@ describe("notification validation", () => {
 
   it("only exposes a complete, structurally valid VAPID configuration", () => {
     expect(getNotificationConfiguration({ WEB_PUSH_VAPID_PUBLIC_KEY: "invalid", WEB_PUSH_VAPID_PRIVATE_KEY: "private", WEB_PUSH_SUBJECT: "mailto:privacy@example.com" })).toEqual({ configured: false, publicKey: "" });
-    expect(getNotificationConfiguration({ WEB_PUSH_VAPID_PUBLIC_KEY: validPublicKey, WEB_PUSH_VAPID_PRIVATE_KEY: "private", WEB_PUSH_SUBJECT: "mailto:privacy@example.com" })).toEqual({ configured: true, publicKey: validPublicKey });
+    expect(getNotificationConfiguration({ WEB_PUSH_VAPID_PUBLIC_KEY: validPublicKey, WEB_PUSH_VAPID_PRIVATE_KEY: validPrivateKey, WEB_PUSH_SUBJECT: "mailto:privacy@example.com" })).toEqual({ configured: true, publicKey: validPublicKey });
   });
 });
 

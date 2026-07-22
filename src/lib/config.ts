@@ -1,3 +1,5 @@
+import { getNotificationServerConfiguration } from "./notifications";
+
 type RuntimeEnvironment = Record<string, string | undefined>;
 
 export function getRuntimeCapabilities(environment: RuntimeEnvironment = process.env) {
@@ -8,8 +10,7 @@ export function getRuntimeCapabilities(environment: RuntimeEnvironment = process
   const persistence = !databaseUrl ? "memory" : databaseUrl.startsWith("file:") ? "sqlite" : "turso";
   const persistentStorageRequired = environment.NODE_ENV === "production" && environment.ALLOW_IN_MEMORY_PERSISTENCE !== "true";
   const geminiRecommendationsEnabled = environment.ENABLE_GEMINI_RECOMMENDATIONS === "true" && Boolean(environment.GEMINI_API_KEY);
-  const notificationValues = [environment.WEB_PUSH_VAPID_PUBLIC_KEY, environment.WEB_PUSH_VAPID_PRIVATE_KEY, environment.WEB_PUSH_SUBJECT];
-  const notificationsConfigured = notificationValues.every(Boolean);
+  const notificationsConfigured = getNotificationServerConfiguration(environment).configured;
 
   return {
     persistence,

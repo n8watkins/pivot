@@ -19,10 +19,9 @@ The following work is already complete in the `production-hardening` branch:
 - Turso-compatible migrations and a local SQLite workflow are implemented.
 - Security headers, same-origin mutation checks, database-backed request limits, and non-cacheable sensitive responses are implemented.
 - CI, CodeQL, Dependabot, deployment runbooks, database recovery guidance, and incident response guidance are implemented.
+- Android PWA installation, an offline shell, and opt-in weekly or monthly Web Push check-ins are implemented.
 
-The latest local verification passed with 38 Playwright tests, 19 unit and integration tests, lint, TypeScript checks, a production build, and a production dependency audit with zero vulnerabilities.
-
-The latest commit is `8b0d71a`, and the working tree is clean.
+The latest local verification covers 51 Playwright tests, 29 unit and integration tests, lint, TypeScript checks, a production build, and a production dependency audit with zero vulnerabilities.
 
 ## 1. Choose the launch settings
 
@@ -90,6 +89,10 @@ Configure variables separately for Preview and Production.
 | `AUTH_SECRET` | Required for GitHub auth | Required for GitHub auth | Use different randomly generated values. |
 | `AUTH_GITHUB_ID` | Required for GitHub auth | Required for GitHub auth | Use the matching OAuth app. |
 | `AUTH_GITHUB_SECRET` | Required for GitHub auth | Required for GitHub auth | Never commit or expose this value. |
+| `WEB_PUSH_VAPID_PUBLIC_KEY` | Required for check-ins | Required for check-ins | Generate once and keep stable with its private pair. |
+| `WEB_PUSH_VAPID_PRIVATE_KEY` | Required for check-ins | Required for check-ins | Store with Vercel's sensitive-variable option. |
+| `WEB_PUSH_SUBJECT` | Required for check-ins | Required for check-ins | Use an approved `mailto:` or HTTPS contact identifier. |
+| `CRON_SECRET` | Required for check-ins | Required for check-ins | Use a separate random value and mark it sensitive. |
 | `COOKIE_SECURE` | Omit on HTTPS | Omit on HTTPS | The production default is secure cookies. |
 | `ALLOW_IN_MEMORY_PERSISTENCE` | Omit | Omit | Never enable this for real traffic. |
 
@@ -100,6 +103,9 @@ npx auth secret
 ```
 
 Paste secrets into Vercel's encrypted environment-variable interface rather than committing them to `.env` files or sending them in chat.
+
+Generate one VAPID pair for Preview and another for Production, then add the private keys and cron secrets with `vercel env add NAME ENVIRONMENT --sensitive`.
+Do not rotate a VAPID pair without planning to recreate all existing browser subscriptions.
 
 ## 4. Configure GitHub authentication
 
@@ -159,6 +165,10 @@ Use a private browser window so the test begins with a fresh anonymous session.
 18. Delete all anonymous data.
 19. Confirm the app returns to a clean onboarding state.
 20. Open `/api/health` and confirm the response is healthy and contains no secrets.
+21. Install Pivot from Chrome on Android and confirm it opens without browser chrome.
+22. Opt into weekly notifications, reload Settings, and confirm the preference persists.
+23. Turn notifications off and confirm the browser subscription is removed.
+24. Confirm an unauthenticated request to `/api/cron/notifications` returns HTTP 401.
 
 Repeat the critical flow once on a narrow mobile viewport and once with keyboard-only navigation on desktop.
 
@@ -241,4 +251,4 @@ When you are ready for the external setup, provide or confirm these items:
 7. The GitHub repository branch or pull-request preference after the push.
 8. The approved privacy policy, terms, and safety disclaimer content, or the person responsible for providing it.
 
-The only values that must stay private are Turso tokens, GitHub client secrets, Auth.js secrets, Gemini keys, Vercel tokens, and monitoring DSNs.
+The values that must stay private are Turso tokens, GitHub client secrets, Auth.js secrets, Gemini keys, the VAPID private key, the cron secret, Vercel tokens, and monitoring DSNs.

@@ -67,6 +67,15 @@ async function executeWhenDatabaseIsAvailable(statement: { sql: string; args: st
   }
 }
 
+async function waitForDatabaseRow(statement: { sql: string; args: string[] }) {
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    const result = await executeWhenDatabaseIsAvailable(statement);
+    if (result.rows.length) return result;
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  return executeWhenDatabaseIsAvailable(statement);
+}
+
 test("weekly and monthly notification choices persist and opt-out unsubscribes", async ({ page }) => {
   await installPushHarness(page, "granted", `https://push.example.test/${crypto.randomUUID()}`);
   await page.goto("/settings");
@@ -113,7 +122,7 @@ test("deleting all data removes notification preferences, subscriptions, and del
   await page.getByRole("radio", { name: /Weekly/ }).click();
   await expect(page.getByRole("status")).toContainText("Weekly check-ins are on.");
   const sessionId = await page.evaluate(() => fetch("/api/session").then((response) => response.json()).then((value) => value.sessionId as string));
-  const before = await executeWhenDatabaseIsAvailable({ sql: "SELECT id FROM push_subscriptions WHERE session_id = ?", args: [sessionId] });
+  const before = await waitForDatabaseRow({ sql: "SELECT id FROM push_subscriptions WHERE session_id = ?", args: [sessionId] });
   expect(before.rows).toHaveLength(1);
   const subscriptionId = String(before.rows[0].id);
   await executeWhenDatabaseIsAvailable({ sql: "INSERT INTO notification_deliveries (id, subscription_id, cadence, period_key, scheduled_for, status, created_at) VALUES (?, ?, 'weekly', '2026-W30', '2026-07-20T16:00:00.000Z', 'sent', '2026-07-20T16:00:00.000Z')", args: [crypto.randomUUID(), subscriptionId] });
@@ -137,4 +146,14 @@ test("notification messages never contain private Pivot content", async ({ reque
   expect(source).toContain('body: "Your Pivot check-in is ready."');
   expect(source).not.toContain("contextNote");
   expect(source).not.toContain("pivotGoal");
+});
+
+test("notification scheduler requires the dedicated cron secret", async ({ request }) => {
+  const unauthorized = await request.get("/api/cron/notifications");
+  expect(unauthorized.status()).toBe(401);
+  expect(unauthorized.headers()["cache-control"]).toContain("no-store");
+
+  const authorized = await request.get("/api/cron/notifications", { headers: { Authorization: "Bearer pivot-e2e-cron-secret" } });
+  expect(authorized.ok()).toBeTruthy();
+  await expect(authorized.json()).resolves.toMatchObject({ ok: true, sent: expect.any(Number), deduplicated: expect.any(Number), expired: expect.any(Number) });
 });

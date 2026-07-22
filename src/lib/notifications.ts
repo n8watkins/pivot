@@ -49,12 +49,24 @@ export type NotificationPreference = {
 export const defaultNotificationPreference: NotificationPreference = { cadence: "off", timezone: "UTC" };
 
 export function getNotificationConfiguration(environment: Record<string, string | undefined> = process.env) {
+  const server = getNotificationServerConfiguration(environment);
+  return { configured: server.configured, publicKey: server.configured ? server.publicKey : "" };
+}
+
+export function getNotificationServerConfiguration(environment: Record<string, string | undefined> = process.env) {
   const publicKey = environment.WEB_PUSH_VAPID_PUBLIC_KEY?.trim() ?? "";
   const privateKey = environment.WEB_PUSH_VAPID_PRIVATE_KEY?.trim() ?? "";
   const subject = environment.WEB_PUSH_SUBJECT?.trim() ?? "";
   const publicKeyValid = isBase64UrlBytes(publicKey, 65) && Buffer.from(publicKey, "base64url")[0] === 4;
-  const configured = publicKeyValid && Boolean(privateKey && subject);
-  return { configured, publicKey: configured ? publicKey : "" };
+  const privateKeyValid = isBase64UrlBytes(privateKey, 32);
+  const subjectValid = subject.startsWith("mailto:") || subject.startsWith("https://");
+  const configured = publicKeyValid && privateKeyValid && subjectValid;
+  return {
+    configured,
+    publicKey: configured ? publicKey : "",
+    privateKey: configured ? privateKey : "",
+    subject: configured ? subject : "",
+  };
 }
 
 export async function readNotificationPreference(db: Client, sessionId: string): Promise<NotificationPreference> {

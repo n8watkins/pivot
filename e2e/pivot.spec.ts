@@ -2,11 +2,14 @@ import { expect, test } from "@playwright/test";
 import { createClient } from "@libsql/client";
 import AxeBuilder from "@axe-core/playwright";
 
+test.use({ serviceWorkers: "block" });
+
 async function createBasicPivot(page: import("@playwright/test").Page, goal = "late night scrolling") {
   await page.goto("/onboarding");
   await page.getByLabel("Name this pivot").fill(goal);
   await page.getByRole("button", { name: /Save.*pivot/ }).click();
   await page.getByRole("button", { name: /Finish setup/ }).click();
+  await expect(page.getByRole("heading", { name: "Ready when you are." })).toBeVisible();
 }
 
 async function createTwoCustomPivots(page: import("@playwright/test").Page) {
