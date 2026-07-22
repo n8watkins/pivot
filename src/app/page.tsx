@@ -407,7 +407,7 @@ export default function Home() {
             <div className="urge-context-column">
               <span className="field-label">What fits this moment?</span>
               <div className="chip-row">
-                {["Bored", "Stressed", "Tired", "Avoiding something", "Just automatic", ...customContexts].map((item) => <button type="button" className={`chip ${context === item ? "active" : ""}`} key={item} onClick={() => setContext(context === item ? "" : item)}>{item}</button>)}
+                {["Bored", "Stressed", "Tired", "Avoiding something", "Just automatic", ...customContexts].map((item) => <button type="button" aria-pressed={context === item} className={`chip ${context === item ? "active" : ""}`} key={item} onClick={() => setContext(context === item ? "" : item)}>{item}</button>)}
               </div>
               <label className="field-label" htmlFor="custom-context">Add your own tag <span>Optional</span></label>
               <div className="goal-add-row context-add-row">
@@ -519,7 +519,7 @@ export default function Home() {
             <h1>Small moments count.</h1>
             <p className="lede">A quiet record of the times you chose a different next step.</p>
           </div>
-          {historyPivots.length > 1 && <div className="history-filters" aria-label="Filter History by pivot"><button type="button" aria-pressed={historyFilter === "all"} className={historyFilter === "all" ? "active" : ""} onClick={() => filterHistory("all")}>All</button>{historyPivots.map((pivot) => <button type="button" aria-pressed={historyFilter === pivot.id} className={historyFilter === pivot.id ? "active" : ""} key={pivot.id} onClick={() => filterHistory(pivot.id)}>{pivot.label}</button>)}</div>}
+          {historyPivots.length > 1 && <div className="history-filters" role="group" aria-label="Filter History by pivot"><button type="button" aria-pressed={historyFilter === "all"} className={historyFilter === "all" ? "active" : ""} onClick={() => filterHistory("all")}>All</button>{historyPivots.map((pivot) => <button type="button" aria-pressed={historyFilter === pivot.id} className={historyFilter === pivot.id ? "active" : ""} key={pivot.id} onClick={() => filterHistory(pivot.id)}>{pivot.label}</button>)}</div>}
           <div className="history-stat"><strong>{visibleHistory.length}</strong><span>redirected {visibleHistory.length === 1 ? "moment" : "moments"}</span></div>
           {flowError && <p className="form-status" role="status">{flowError}</p>}
           {visibleHistory.length ? (

@@ -369,9 +369,43 @@ test("narrow and reduced-motion layouts remain usable without horizontal overflo
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/onboarding");
   await expect(page.getByRole("heading", { name: "What would you like to pivot away from?" })).toBeVisible();
+  await expect(page.getByRole("progressbar", { name: "Setup progress" })).toHaveAttribute("aria-valuenow", "1");
+  await expect(page.getByRole("button", { name: "Take a short walk" })).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("button", { name: "Take a short walk" }).click();
+  await expect(page.getByRole("button", { name: "Take a short walk" })).toHaveAttribute("aria-pressed", "false");
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
   const reducedTransition = await page.locator(".progress-track i").evaluate((element) => Number.parseFloat(getComputedStyle(element).transitionDuration));
   expect(reducedTransition).toBeLessThanOrEqual(0.001);
+});
+
+test("mobile shell keeps stats clear of the fixed navigation with large touch targets", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await createBasicPivot(page);
+  await expect(page.getByRole("button", { name: /I’m having an urge/ })).toBeVisible();
+  await expect(page.locator(".shell-rail .rail-card").first()).toBeVisible();
+  const geometry = await page.evaluate(() => {
+    const urge = document.querySelector(".urge-button")!.getBoundingClientRect();
+    const firstRailCard = document.querySelector(".shell-rail .rail-card")!.getBoundingClientRect();
+    const pill = document.querySelector(".pivot-pill")!.getBoundingClientRect();
+    return { railGap: firstRailCard.top - urge.bottom, pillHeight: pill.height };
+  });
+  expect(geometry.railGap).toBeLessThanOrEqual(40);
+  expect(geometry.pillHeight).toBeGreaterThanOrEqual(44);
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  const bottomGeometry = await page.evaluate(() => ({ noteBottom: document.querySelector(".rail-note")!.getBoundingClientRect().bottom, tabTop: document.querySelector(".shell-tabbar")!.getBoundingClientRect().top }));
+  expect(bottomGeometry.noteBottom).toBeLessThanOrEqual(bottomGeometry.tabTop);
+  await page.goto("/settings");
+  const editTarget = await page.getByRole("link", { name: "Edit late night scrolling" }).boundingBox();
+  expect(editTarget).not.toBeNull();
+  expect(editTarget!.width).toBeGreaterThanOrEqual(44);
+  expect(editTarget!.height).toBeGreaterThanOrEqual(44);
+});
+
+test("settings stays single-column at compact desktop widths", async ({ page }) => {
+  await page.setViewportSize({ width: 900, height: 768 });
+  await page.goto("/settings");
+  const columns = await page.locator(".settings-layout").evaluate((element) => getComputedStyle(element).gridTemplateColumns.split(" ").length);
+  expect(columns).toBe(1);
 });
 
 test("security headers are present", async ({ request }) => {

@@ -151,9 +151,9 @@ export function ReplacementIcon({ name }: { name: string }) {
 }
 
 export function Progress({ step, total = 3 }: { step: number; total?: number }) {
-  return <div className="progress" aria-label={`Step ${step} of ${total}`}><span>{step}</span><div className="progress-track"><i style={{ width: `${(step / total) * 100}%` }} /></div><span>{total}</span></div>;
+  return <div className="progress" role="progressbar" aria-label="Setup progress" aria-valuemin={1} aria-valuemax={total} aria-valuenow={step} aria-valuetext={`Step ${step} of ${total}`}><span>{step}</span><div className="progress-track"><i style={{ width: `${(step / total) * 100}%` }} /></div><span>{total}</span></div>;
 }
 
 export function ReplacementChoice({ item, selected, onToggle }: { item: ReplacementOption & { icon: string }; selected: boolean; onToggle: () => void }) {
-  return <button type="button" className={`choice ${selected ? "selected" : ""}`} onClick={onToggle}><span className="choice-icon"><ReplacementIcon name={item.icon} /></span><span>{item.name}</span><span className="check">{selected ? <Icon name="check" size={15} /> : null}</span></button>;
+  return <button type="button" aria-pressed={selected} className={`choice ${selected ? "selected" : ""}`} onClick={onToggle}><span className="choice-icon"><ReplacementIcon name={item.icon} /></span><span>{item.name}</span><span className="check">{selected ? <Icon name="check" size={15} /> : null}</span></button>;
 }

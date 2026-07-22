@@ -3,7 +3,7 @@
 :root {
   --ink: #26302b;
   --ink-soft: #53615a;
-  --muted: #6a756d;
+  --muted: #667168;
   --paper: #f5f7f2;
   --card: #ffffff;
   --line: #e1e6de;
@@ -12,7 +12,7 @@
   --deep-sage: #4d6d5a;
   --deep-sage-hover: #3d5d4b;
   --coral: #e88b70;
-  --coral-strong: #d9704f;
+  --coral-strong: #a94b2b;
   --coral-ink: #3f2a22;
   --sage-tint: #e9f1e7;
   --sage-tint-2: #eef4ec;
@@ -74,6 +74,25 @@ textarea {
 :focus-visible {
   outline: 3px solid #91ad99;
   outline-offset: 3px;
+}
+
+.skip-link {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  z-index: 100;
+  border-radius: 10px;
+  background: var(--ink);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  padding: 11px 14px;
+  text-decoration: none;
+  transform: translateY(-160%);
+}
+
+.skip-link:focus {
+  transform: translateY(0);
 }
 
 /* ============================================================
@@ -139,7 +158,7 @@ textarea {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  min-height: 38px;
+  min-height: 44px;
   border: 1px solid var(--line);
   border-radius: 999px;
   background: var(--card);
@@ -155,6 +174,12 @@ textarea {
   border-color: var(--deep-sage);
   background: var(--sage-tint);
   color: var(--deep-sage);
+}
+
+.pivot-pill:disabled,
+.pivot-rail-item:disabled {
+  cursor: wait;
+  opacity: .55;
 }
 
 .pivot-pill .pv-name {
@@ -403,8 +428,8 @@ h1 {
 
 .icon-button {
   display: grid;
-  width: 42px;
-  height: 42px;
+  width: 44px;
+  height: 44px;
   place-items: center;
   border: 1px solid var(--line);
   border-radius: 11px;
@@ -432,7 +457,7 @@ h1 {
 }
 
 .danger-button:hover:not(:disabled) {
-  color: #b8542f;
+  color: #8f3e24;
 }
 
 /* ============================================================
@@ -467,7 +492,7 @@ h1 {
 }
 
 .text-input::placeholder {
-  color: #9aa49b;
+  color: #6c766e;
 }
 
 .text-input:focus {
@@ -707,7 +732,7 @@ h1 {
 
 .urge-button small {
   margin-top: 4px;
-  color: #6d453a;
+  color: var(--coral-ink);
   font-size: 13px;
 }
 
@@ -724,7 +749,7 @@ h1 {
 
 .urge-button .arrow {
   margin-left: auto;
-  color: #7a4536;
+  color: var(--coral-ink);
   display: grid;
   place-items: center;
 }
@@ -734,6 +759,7 @@ h1 {
   align-items: center;
   gap: 6px;
   margin-top: 6px;
+  min-height: 44px;
   color: var(--deep-sage);
   font-size: 15px;
   font-weight: 700;
@@ -1083,7 +1109,7 @@ h1 {
 }
 
 .history-filters button {
-  min-height: 36px;
+  min-height: 44px;
   border: 1px solid var(--line);
   border-radius: 999px;
   background: var(--card);
@@ -1523,6 +1549,11 @@ h1 {
 }
 
 .settings-pivot a {
+  display: inline-flex;
+  min-width: 44px;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
   color: var(--deep-sage);
   font-size: 13px;
   font-weight: 700;
@@ -1534,6 +1565,7 @@ h1 {
   align-items: center;
   gap: 6px;
   margin-top: 16px;
+  min-height: 44px;
   color: var(--deep-sage);
   font-size: 13px;
   font-weight: 700;
@@ -1585,8 +1617,8 @@ h1 {
 
 .action-controls button {
   display: grid;
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   place-items: center;
   border: 1px solid var(--line);
   border-radius: 10px;
@@ -1606,6 +1638,16 @@ h1 {
 /* ============================================================
    Desktop layout (>= 900px)
    ============================================================ */
+
+@media (max-width: 899px) {
+  .shell.has-rail .shell-body {
+    padding-bottom: 20px;
+  }
+
+  .shell.has-rail .shell-rail {
+    padding-bottom: calc(88px + env(safe-area-inset-bottom));
+  }
+}
 
 @media (min-width: 900px) {
   .app-shell {
@@ -1667,6 +1709,7 @@ h1 {
     display: flex;
     align-items: center;
     gap: 10px;
+    min-height: 44px;
     width: 100%;
     border: 0;
     border-left: 3px solid transparent;
@@ -1697,7 +1740,7 @@ h1 {
   }
 
   .pivot-rail-item .pv-count {
-    color: #98a29a;
+    color: var(--ink-soft);
     font-size: 11px;
     font-variant-numeric: tabular-nums;
   }
@@ -1728,6 +1771,7 @@ h1 {
     display: flex;
     align-items: center;
     gap: 9px;
+    min-height: 44px;
     margin-top: 6px;
     border: 1px dashed #cdd9cc;
     border-radius: 11px;
@@ -1755,6 +1799,7 @@ h1 {
     display: flex;
     align-items: center;
     gap: 11px;
+    min-height: 44px;
     width: 100%;
     border: 0;
     border-radius: 10px;
@@ -1883,18 +1928,20 @@ h1 {
     max-width: 1000px;
   }
 
-  .settings-layout {
-    grid-template-columns: minmax(0, 1.1fr) minmax(300px, .9fr);
-    align-items: start;
-    gap: 18px;
-    margin-top: 30px;
-  }
-
   .settings-main-column,
   .settings-side-column {
     display: grid;
     align-content: start;
     gap: 18px;
+  }
+}
+
+@media (min-width: 1000px) {
+  .settings-layout {
+    grid-template-columns: minmax(0, 1.1fr) minmax(300px, .9fr);
+    align-items: start;
+    gap: 18px;
+    margin-top: 30px;
   }
 }
 
