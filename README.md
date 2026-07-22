@@ -127,6 +127,7 @@ Browser mutations reject mismatched origins, and sensitive state responses are m
 Connect structured error reporting before increasing public traffic.
 
 The production checklist and operational runbooks are in [`docs/production-readiness.md`](docs/production-readiness.md).
+The complete step-by-step launch walkthrough is in [`docs/production-launch-checklist.md`](docs/production-launch-checklist.md).
 
 ## Verification
 
