@@ -11,6 +11,7 @@ describe("mutation origin protection", () => {
   it("rejects cross-origin browser mutations", () => {
     expect(rejectCrossOriginMutation(new Request("https://pivot.example/api/state", { headers: { origin: "https://attacker.example" } }))?.status).toBe(403);
     expect(rejectCrossOriginMutation(new Request("https://pivot.example/api/state", { headers: { origin: "http://pivot.example", host: "pivot.example", "x-forwarded-proto": "https" } }))?.status).toBe(403);
+    expect(rejectCrossOriginMutation(new Request("https://pivot.example/api/state", { headers: { origin: "null" } }))?.status).toBe(403);
   });
 
   it("creates a stable non-reversible network limiter key", () => {

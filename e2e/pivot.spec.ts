@@ -258,9 +258,10 @@ test("an active action protects its pivot from edits and deletion", async ({ pag
     const body = JSON.stringify({ goal: pivot.goal, replacements: pivot.replacements });
     const edited = await fetch(`/api/pivots/${pivot.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body });
     const deleted = await fetch(`/api/pivots/${pivot.id}`, { method: "DELETE" });
-    return [edited.status, deleted.status];
+    const replaced = await fetch("/api/state", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pivots: state.pivots }) });
+    return [edited.status, deleted.status, replaced.status];
   });
-  expect(statuses).toEqual([409, 409]);
+  expect(statuses).toEqual([409, 409, 409]);
   await page.getByRole("button", { name: /I’m done for now/ }).click();
   await page.getByRole("button", { name: "Much lighter" }).click();
   await page.getByRole("button", { name: "Yes, it helped" }).click();

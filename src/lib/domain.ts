@@ -36,9 +36,10 @@ export async function saveSetup(goals: string[], replacements: ReplacementOption
   const db = getDatabase();
   const parsed = replacements.map((replacement) => replacementInputSchema.parse(replacement));
   if (!db) {
+    if (memoryActive.has(sessionId)) return false;
     const grouped = pivots.length ? pivots.map((pivot) => ({ ...pivot, replacements: pivot.replacements.map((replacement) => replacementInputSchema.parse(replacement)) })) : goals[0] ? [{ id: "legacy", goal: goals[0], replacements: parsed }] : [];
     memoryState.set(sessionId, { goal: goals[0] ?? "", goals, replacements: parsed, pivots: grouped, contextTags: memoryState.get(sessionId)?.contextTags ?? [], history: memoryState.get(sessionId)?.history ?? [], active: memoryState.get(sessionId)?.active });
-    return sessionId;
+    return true;
   }
   await initializeDatabase();
   const grouped = pivots.length ? pivots : goals.map((goal, index) => ({ id: `legacy-${index}`, goal, replacements: parsed }));
@@ -54,8 +55,17 @@ export async function saveSetup(goals: string[], replacements: ReplacementOption
     statements.push({ sql: "INSERT INTO goals (id, session_id, pivot_id, label, created_at) VALUES (?, ?, ?, ?, ?)", args: [goalId, sessionId, pivot.id, pivot.goal.trim(), now] });
     for (const replacement of pivot.replacements.map((item) => replacementInputSchema.parse(item))) statements.push({ sql: "INSERT INTO replacements (id, session_id, pivot_id, label, detail, duration) VALUES (?, ?, ?, ?, ?, ?)", args: [`${pivot.id}:${replacement.id}`, sessionId, pivot.id, replacement.name, replacement.detail, replacement.duration] });
   }
-  await db.batch(statements, "write");
-  return sessionId;
+  const transaction = await db.transaction("write");
+  try {
+    const active = await transaction.execute({ sql: "SELECT 1 FROM active_interventions WHERE session_id = ? AND completed_at IS NULL LIMIT 1", args: [sessionId] });
+    if (active.rows[0]) { await transaction.rollback(); return false; }
+    await transaction.batch(statements);
+    await transaction.commit();
+    return true;
+  } catch (error) {
+    await transaction.rollback();
+    throw error;
+  } finally { transaction.close(); }
 }
 
 export async function createPivot(pivot: PivotInput) {

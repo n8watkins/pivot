@@ -49,6 +49,7 @@ export async function linkGitHubAccount(db: Client, currentSessionId: string, id
       { sql: "UPDATE urge_sessions SET session_id = ? WHERE session_id = ?", args: [canonicalSessionId, sourceSessionId] },
       { sql: "UPDATE active_interventions SET session_id = ? WHERE session_id = ?", args: [canonicalSessionId, sourceSessionId] },
       { sql: "UPDATE privacy_events SET session_id = ? WHERE session_id = ?", args: [canonicalSessionId, sourceSessionId] },
+      { sql: "DELETE FROM rate_limits WHERE key LIKE '%:' || ?", args: [sourceSessionId] },
       { sql: "DELETE FROM anonymous_sessions WHERE id = ?", args: [sourceSessionId] },
       { sql: "UPDATE anonymous_sessions SET account_id = ? WHERE id = ?", args: [accountId, canonicalSessionId] },
     ], "write");

@@ -4,7 +4,8 @@ import { createHash } from "node:crypto";
 export function rejectCrossOriginMutation(request: Request) {
   const origin = request.headers.get("origin");
   if (!origin) return null;
-  const originUrl = new URL(origin);
+  let originUrl: URL;
+  try { originUrl = new URL(origin); } catch { return NextResponse.json({ error: "Cross-origin mutation rejected." }, { status: 403 }); }
   const requestUrl = new URL(request.url);
   const forwardedHost = request.headers.get("x-forwarded-host") ?? request.headers.get("host");
   const forwardedProtocol = request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim() ?? requestUrl.protocol.slice(0, -1);
