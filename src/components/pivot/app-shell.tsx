@@ -57,7 +57,7 @@ export function AppShell({
             <span className="brand"><Logo /><span>pivot</span></span>
             {focusLabel && <span className="focus-mode-label">{focusLabel}</span>}
           </div>
-          <div className="focus-content" id="main-content">{children}</div>
+          <div className="focus-content" id="main-content" tabIndex={-1}>{children}</div>
         </div>
       </main>
     );
@@ -139,7 +139,7 @@ export function AppShell({
               <Link className="pivot-pill pivot-pill-add" href={newPivotHref}><Icon name="plus" size={14} /> New</Link>
             </div>
           )}
-          <div className="shell-content" id="main-content">{children}</div>
+          <div className="shell-content" id="main-content" tabIndex={-1}>{children}</div>
         </div>
 
         {rightRail && <aside className="shell-rail">{rightRail}</aside>}

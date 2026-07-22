@@ -408,6 +408,21 @@ test("settings stays single-column at compact desktop widths", async ({ page }) 
   expect(columns).toBe(1);
 });
 
+test("app shell supports keyboard skipping and authenticated account state", async ({ page }) => {
+  await createBasicPivot(page);
+  await expect(page.getByRole("heading", { name: "Ready when you are." })).toBeVisible();
+  await page.reload();
+  await page.keyboard.press("Tab");
+  await expect(page.getByRole("link", { name: "Skip to main content" })).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#main-content")).toBeFocused();
+  await page.route("**/api/account", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ configured: true, authenticated: true, user: { login: "pivot-tester", name: "Pivot Tester" } }) }));
+  await page.goto("/settings");
+  await expect(page.getByRole("heading", { name: "Signed in as @pivot-tester" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Account and settings" })).toContainText("@pivot-tester");
+  await expect(page.getByRole("button", { name: /Sign out/ })).toBeVisible();
+});
+
 test("security headers are present", async ({ request }) => {
   const response = await request.get("/");
   expect(response.headers()["x-content-type-options"]).toBe("nosniff");
