@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { signIn, signOut } from "next-auth/react";
 import { AppShell, type UtilityNavItem } from "@/components/pivot/app-shell";
+import { InstallPivot } from "@/components/pivot/install-pivot";
 import { Icon } from "@/components/pivot/ui";
 
 type Pivot = { id: string; goal: string; replacements: { id: string; name: string }[] };
@@ -80,6 +81,7 @@ export default function SettingsPage() {
             </section>
           </div>
           <aside className="settings-side-column" aria-label="Account and privacy">
+            <InstallPivot />
             <section className="settings-section">
               <div className="settings-section-heading">
                 <div><span className="card-kicker">Account</span><h2>{account.authenticated ? `Signed in as @${account.user?.login}` : "Anonymous by default"}</h2></div>

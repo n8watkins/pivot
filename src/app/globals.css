@@ -50,6 +50,28 @@ body {
   letter-spacing: -.005em;
 }
 
+@media (display-mode: standalone) {
+  html,
+  body {
+    overscroll-behavior-y: none;
+  }
+
+  body {
+    min-height: 100dvh;
+  }
+
+  .app-shell,
+  .shell,
+  .focus-frame,
+  .setup-wrap {
+    min-height: 100dvh;
+  }
+
+  .shell-body {
+    padding-top: max(20px, env(safe-area-inset-top));
+  }
+}
+
 button,
 input,
 textarea {
@@ -1526,6 +1548,127 @@ h1 {
   color: var(--muted);
   font-size: 13px;
   line-height: 1.55;
+}
+
+.install-instructions {
+  margin-top: 16px;
+  border-radius: var(--radius-sm);
+  background: var(--sage-tint-2);
+  color: var(--ink-soft);
+  font-size: 13px;
+  line-height: 1.55;
+  padding: 16px;
+}
+
+.install-instructions strong {
+  color: var(--ink);
+}
+
+.install-instructions ol {
+  margin: 10px 0 0;
+  padding-left: 20px;
+}
+
+.install-instructions li + li {
+  margin-top: 5px;
+}
+
+.install-instructions span {
+  color: var(--deep-sage);
+  font-weight: 700;
+}
+
+.install-section .form-status,
+.install-section .success-status {
+  margin: 14px 0 0;
+}
+
+.pwa-update {
+  position: fixed;
+  right: max(16px, env(safe-area-inset-right));
+  bottom: max(16px, calc(env(safe-area-inset-bottom) + 16px));
+  left: max(16px, env(safe-area-inset-left));
+  z-index: 90;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 12px;
+  width: min(560px, calc(100% - 32px));
+  margin-left: auto;
+  border: 1px solid #d6e2d6;
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, .97);
+  box-shadow: var(--shadow-lg);
+  padding: 14px;
+}
+
+.pwa-update strong,
+.pwa-update span {
+  display: block;
+}
+
+.pwa-update strong {
+  font-size: 13px;
+}
+
+.pwa-update span {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.pwa-update button {
+  min-height: 44px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--deep-sage);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 0 14px;
+}
+
+.pwa-update .pwa-update-dismiss {
+  background: transparent;
+  color: var(--muted);
+}
+
+.offline-page {
+  display: grid;
+  align-content: center;
+  gap: 28px;
+  width: min(100% - 40px, 620px);
+  min-height: 100svh;
+  margin: 0 auto;
+  padding: max(28px, env(safe-area-inset-top)) 0 max(28px, env(safe-area-inset-bottom));
+}
+
+.offline-card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--card);
+  box-shadow: var(--shadow-md);
+  padding: clamp(24px, 7vw, 42px);
+}
+
+.offline-card h1 {
+  font-size: clamp(30px, 7vw, 44px);
+}
+
+.offline-card .primary-button {
+  width: fit-content;
+  margin-top: 28px;
+}
+
+@media (max-width: 520px) {
+  .pwa-update {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .pwa-update .pwa-update-dismiss {
+    grid-column: 1 / -1;
+    min-height: 32px;
+  }
 }
 
 .settings-list {
