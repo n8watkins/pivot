@@ -4,8 +4,11 @@ import { ensureSession, getDatabase } from "@/lib/session";
 import { getSnapshot } from "@/lib/domain";
 import { recommendationInputSchema } from "@/lib/schemas";
 import { isRateLimited, rateLimitResponse } from "@/lib/rate-limit";
+import { rejectCrossOriginMutation } from "@/lib/request-security";
 
 export async function POST(request: Request) {
+  const rejected = rejectCrossOriginMutation(request);
+  if (rejected) return rejected;
   const sessionId = await ensureSession();
   if (await isRateLimited(`recommendation:${sessionId}`, 20, { database: getDatabase() })) return rateLimitResponse();
   const body = await request.json().catch(() => ({}));

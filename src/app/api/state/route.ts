@@ -1,10 +1,17 @@
 import { NextResponse } from "next/server";
 import { getSnapshot, saveSetup } from "@/lib/domain";
 import { pivotsInputSchema, setupInputSchema } from "@/lib/schemas";
+import { rejectCrossOriginMutation } from "@/lib/request-security";
+import { ensureSession, getDatabase } from "@/lib/session";
+import { isRateLimited, rateLimitResponse } from "@/lib/rate-limit";
 
-export async function GET() { return NextResponse.json(await getSnapshot()); }
+export async function GET() { return NextResponse.json(await getSnapshot(), { headers: { "Cache-Control": "no-store" } }); }
 
 export async function POST(request: Request) {
+  const rejected = rejectCrossOriginMutation(request);
+  if (rejected) return rejected;
+  const sessionId = await ensureSession();
+  if (await isRateLimited(`state:${sessionId}`, 20, { database: getDatabase() })) return rateLimitResponse();
   const body = await request.json().catch(() => ({}));
   const pivots = pivotsInputSchema.safeParse(body.pivots);
   if (pivots.success) {

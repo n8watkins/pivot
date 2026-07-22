@@ -3,10 +3,13 @@ import { deletePivot, updatePivot } from "@/lib/domain";
 import { pivotInputSchema } from "@/lib/schemas";
 import { ensureSession, getDatabase } from "@/lib/session";
 import { isRateLimited, rateLimitResponse } from "@/lib/rate-limit";
+import { rejectCrossOriginMutation } from "@/lib/request-security";
 
 type RouteContext = { params: Promise<{ pivotId: string }> };
 
 export async function PATCH(request: Request, context: RouteContext) {
+  const rejected = rejectCrossOriginMutation(request);
+  if (rejected) return rejected;
   const sessionId = await ensureSession();
   if (await isRateLimited(`pivots:${sessionId}`, 30, { database: getDatabase() })) return rateLimitResponse();
   const { pivotId } = await context.params;
@@ -17,7 +20,9 @@ export async function PATCH(request: Request, context: RouteContext) {
   return NextResponse.json({ pivot: parsed.data });
 }
 
-export async function DELETE(_request: Request, context: RouteContext) {
+export async function DELETE(request: Request, context: RouteContext) {
+  const rejected = rejectCrossOriginMutation(request);
+  if (rejected) return rejected;
   const sessionId = await ensureSession();
   if (await isRateLimited(`pivots:${sessionId}`, 30, { database: getDatabase() })) return rateLimitResponse();
   const { pivotId } = await context.params;

@@ -3,8 +3,11 @@ import { startIntervention } from "@/lib/domain";
 import { ensureSession, getDatabase } from "@/lib/session";
 import { isRateLimited, rateLimitResponse } from "@/lib/rate-limit";
 import { interventionInputSchema } from "@/lib/schemas";
+import { rejectCrossOriginMutation } from "@/lib/request-security";
 
 export async function POST(request: Request) {
+  const rejected = rejectCrossOriginMutation(request);
+  if (rejected) return rejected;
   const sessionId = await ensureSession();
   if (await isRateLimited(`intervention:${sessionId}`, 30, { database: getDatabase() })) return rateLimitResponse();
   const body = await request.json().catch(() => ({}));

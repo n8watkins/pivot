@@ -4,8 +4,11 @@ import { ensureSession, getDatabase } from "@/lib/session";
 import { isRateLimited, rateLimitResponse } from "@/lib/rate-limit";
 import { contextTagSchema } from "@/lib/schemas";
 import { defaultContextTags } from "@/components/pivot/data";
+import { rejectCrossOriginMutation } from "@/lib/request-security";
 
 export async function POST(request: Request) {
+  const rejected = rejectCrossOriginMutation(request);
+  if (rejected) return rejected;
   const sessionId = await ensureSession();
   if (await isRateLimited(`tags:${sessionId}`, 30, { database: getDatabase() })) return rateLimitResponse();
   const body = await request.json().catch(() => ({}));
@@ -17,6 +20,8 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+  const rejected = rejectCrossOriginMutation(request);
+  if (rejected) return rejected;
   const sessionId = await ensureSession();
   if (await isRateLimited(`tags:${sessionId}`, 30, { database: getDatabase() })) return rateLimitResponse();
   const label = new URL(request.url).searchParams.get("label");

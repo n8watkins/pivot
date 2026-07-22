@@ -42,7 +42,8 @@ npm run dev:sqlite
 
 Open [http://localhost:3000](http://localhost:3000).
 The local database is created at `data/pivot.db`, which is excluded from Git.
-The app applies schema migrations automatically.
+The app applies idempotent schema migrations automatically for local convenience.
+Production releases should run `npm run db:migrate` before promotion.
 
 Use the production build locally with the same SQLite database when checking deployment behavior.
 
@@ -121,8 +122,11 @@ A partial GitHub configuration returns HTTP 503 with `status: "degraded"`.
 Database initialization failure or missing production persistence returns HTTP 503 with `status: "unavailable"`.
 
 Security headers include a restrictive content security policy, frame denial, MIME sniffing protection, a strict referrer policy, and disabled camera, microphone, and geolocation permissions.
-Mutation routes use per-session request limits.
-For a larger public release, replace the process-local limiter with a distributed limiter and connect structured error reporting before increasing traffic.
+Mutation routes use database-backed per-session request limits that remain consistent across application instances.
+Browser mutations reject mismatched origins, and sensitive state responses are marked as non-cacheable.
+Connect structured error reporting before increasing public traffic.
+
+The production checklist and operational runbooks are in [`docs/production-readiness.md`](docs/production-readiness.md).
 
 ## Verification
 
