@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { closedLoopInputSchema, eventInputSchema, interventionInputSchema, recommendationInputSchema, setupInputSchema } from "./schemas";
+import { closedLoopInputSchema, contextTagSchema, eventInputSchema, interventionInputSchema, recommendationInputSchema, setupInputSchema } from "./schemas";
 
 const replacements = ["walk", "breathe", "stretch"].map((id) => ({ id, name: id, detail: "A safe option", duration: "3 min" }));
 
@@ -18,6 +18,12 @@ describe("server input contracts", () => {
     expect(recommendationInputSchema.safeParse({ pivotId: "pivot-evening", replacements }).success).toBe(true);
     expect(recommendationInputSchema.safeParse({ replacements }).success).toBe(false);
     expect(interventionInputSchema.safeParse({ pivotId: "pivot-evening", replacementId: "walk", intensity: 7 }).success).toBe(true);
+  });
+
+  it("normalizes and bounds context tags", () => {
+    expect(contextTagSchema.parse("  restless  ")).toBe("restless");
+    expect(contextTagSchema.safeParse("x").success).toBe(false);
+    expect(contextTagSchema.safeParse("x".repeat(41)).success).toBe(false);
   });
 
   it("allows only known privacy event types", () => {

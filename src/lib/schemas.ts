@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+export const contextTagSchema = z.string().trim().min(2, "Tag must be at least 2 characters.").max(40, "Tag must be no more than 40 characters.");
+
 export const replacementInputSchema = z.object({
   id: z.string().regex(/^[a-z0-9-]{2,40}$/),
   name: z.string().trim().min(2).max(80),

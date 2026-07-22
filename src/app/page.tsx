@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { replacements, type Replacement } from "@/components/pivot/data";
+import { defaultContextTags, replacements, type Replacement } from "@/components/pivot/data";
 import { AppShell, type UtilityNavItem } from "@/components/pivot/app-shell";
 import { PivotStatsRail } from "@/components/pivot/pivot-stats-rail";
 import { Icon, Progress, ReplacementIcon } from "@/components/pivot/ui";
@@ -65,6 +65,7 @@ export default function Home() {
   const [isRecommending, setIsRecommending] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
   const [isCompleting, setIsCompleting] = useState(false);
+  const [isSavingContext, setIsSavingContext] = useState(false);
   const [flowError, setFlowError] = useState("");
   const [completionMessage, setCompletionMessage] = useState("");
   const [safetyKind, setSafetyKind] = useState<"high-risk" | "specialized">("high-risk");
@@ -283,15 +284,31 @@ export default function Home() {
     updateAppUrl(appHref(activePivotIdRef.current), "push");
   }
 
-  function addContextTag() {
+  async function addContextTag() {
     const tag = customContext.trim();
-    if (!tag || customContexts.some((item) => item.toLowerCase() === tag.toLowerCase())) return;
-    const next = [...customContexts, tag];
+    if (tag.length < 2 || tag.length > 40) {
+      setFlowError("Custom tags must be between 2 and 40 characters.");
+      return;
+    }
+    if ([...defaultContextTags, ...customContexts].some((item) => item.toLowerCase() === tag.toLowerCase())) {
+      setFlowError("That tag is already available.");
+      return;
+    }
+    setIsSavingContext(true);
+    setFlowError("");
+    const response = await fetch("/api/tags", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ label: tag }) }).catch(() => null);
+    const payload = response ? await response.json().catch(() => null) : null;
+    setIsSavingContext(false);
+    if (!response?.ok) {
+      setFlowError(payload?.error ?? "That tag could not be saved.");
+      return;
+    }
+    const savedTag = typeof payload?.label === "string" ? payload.label : tag;
+    const next = [...customContexts, savedTag];
     setCustomContexts(next);
-    setContext(tag);
+    setContext(savedTag);
     setCustomContext("");
     localStorage.setItem("pivot-state", JSON.stringify({ goal, selected, customReplacements, pivots, activePivotId, customContexts: next, history }));
-    void fetch("/api/tags", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ label: tag }) });
   }
 
   function choosePivot(id: string) {
@@ -405,12 +422,12 @@ export default function Home() {
             <div className="urge-context-column">
               <span className="field-label">What fits this moment?</span>
               <div className="chip-row">
-                {["Bored", "Stressed", "Tired", "Avoiding something", "Just automatic", ...customContexts].map((item) => <button type="button" aria-pressed={context === item} className={`chip ${context === item ? "active" : ""}`} key={item} onClick={() => setContext(context === item ? "" : item)}>{item}</button>)}
+                {[...defaultContextTags, ...customContexts].map((item) => <button type="button" aria-pressed={context === item} className={`chip ${context === item ? "active" : ""}`} key={item} onClick={() => setContext(context === item ? "" : item)}>{item}</button>)}
               </div>
               <label className="field-label" htmlFor="custom-context">Add your own tag <span>Optional</span></label>
               <div className="goal-add-row context-add-row">
                 <input id="custom-context" className="text-input" placeholder="e.g. restless, lonely, procrastinating" value={customContext} onChange={(event) => setCustomContext(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); addContextTag(); } }} />
-                <button type="button" className="small-button" onClick={addContextTag} disabled={!customContext.trim()}>Add</button>
+                <button type="button" className="small-button" onClick={addContextTag} disabled={!customContext.trim() || isSavingContext}>{isSavingContext ? "Saving..." : "Add"}</button>
               </div>
             </div>
             <div className="urge-note-column">

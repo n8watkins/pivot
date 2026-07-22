@@ -1,5 +1,7 @@
 export type Replacement = { id: string; name: string; detail: string; duration: string; icon: string };
 
+export const defaultContextTags = ["Bored", "Stressed", "Tired", "Avoiding something", "Just automatic"] as const;
+
 export const replacements: Replacement[] = [
   { id: "walk", name: "Take a short walk", detail: "A quick reset for your body and attention.", duration: "5 min", icon: "walk" },
   { id: "breathe", name: "Slow breathing", detail: "Create a little room between you and the urge.", duration: "2 min", icon: "breathe" },

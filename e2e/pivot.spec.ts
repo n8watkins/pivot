@@ -137,6 +137,19 @@ test("urge context accepts a custom tag", async ({ page }) => {
   await expect(page.getByRole("button", { name: "lonely" })).toHaveClass(/active/);
 });
 
+test("custom tags reject invalid and built-in duplicates without optimistic UI", async ({ page }) => {
+  await createBasicPivot(page);
+  await page.getByRole("button", { name: /I’m having an urge/ }).click();
+  const input = page.getByLabel("Add your own tag");
+  await input.fill("x");
+  await page.getByRole("button", { name: "Add" }).click();
+  await expect(page.getByRole("status")).toContainText("between 2 and 40");
+  await input.fill("bored");
+  await page.getByRole("button", { name: "Add" }).click();
+  await expect(page.getByRole("status")).toContainText("already available");
+  await expect(page.getByRole("button", { name: "Bored" })).toHaveCount(1);
+});
+
 test("switching pivots uses the selected pivot replacement set", async ({ page }) => {
   await page.goto("/onboarding");
   await page.getByLabel("Name this pivot").fill("late scrolling");
