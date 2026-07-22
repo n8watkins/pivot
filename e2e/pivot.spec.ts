@@ -299,6 +299,19 @@ test("settings can edit, reorder, and delete a pivot", async ({ page }) => {
   await expect(page.getByText("Create your first pivot to get started.")).toBeVisible();
 });
 
+test("concurrent pivot creation preserves both independent pivots", async ({ request }) => {
+  await request.get("/api/state");
+  const replacement = { id: "walk", name: "Take a short walk", detail: "A reset", duration: "5 min" };
+  const responses = await Promise.all([
+    request.post("/api/pivots", { data: { goal: "Morning news", replacements: [replacement] } }),
+    request.post("/api/pivots", { data: { goal: "Evening news", replacements: [replacement] } }),
+  ]);
+  expect(responses.every((response) => response.status() === 201)).toBe(true);
+  const snapshot = await (await request.get("/api/state")).json();
+  expect(snapshot.pivots.map((pivot: { goal: string }) => pivot.goal).sort()).toEqual(["Evening news", "Morning news"]);
+  await request.delete("/api/session");
+});
+
 test("custom context tags persist and can be removed in settings", async ({ page }) => {
   await createBasicPivot(page);
   await page.getByRole("button", { name: /I’m having an urge/ }).click();

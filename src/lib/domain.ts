@@ -13,6 +13,8 @@ export type PivotSnapshot = {
   active?: { id: string; pivotId: string; replacementId: string; reason: string; firstStep: string; source: "gemini" | "fallback"; startedAt: string };
 };
 
+type PivotInput = { id: string; goal: string; replacements: ReplacementOption[] };
+
 const memoryState = new Map<string, PivotSnapshot>();
 const memoryActive = new Map<string, { id: string; sessionId: string; pivotId: string; replacementId: string; reason: string; firstStep: string; source: "gemini" | "fallback"; startedAt: string }>();
 const memoryFollowUps = new Map<string, string>();
@@ -39,17 +41,84 @@ export async function saveSetup(goals: string[], replacements: ReplacementOption
     return sessionId;
   }
   await initializeDatabase();
-  await db.execute({ sql: "DELETE FROM replacements WHERE session_id = ?", args: [sessionId] });
-  await db.execute({ sql: "DELETE FROM goals WHERE session_id = ?", args: [sessionId] });
-  await db.execute({ sql: "DELETE FROM pivots WHERE session_id = ?", args: [sessionId] });
   const grouped = pivots.length ? pivots : goals.map((goal, index) => ({ id: `legacy-${index}`, goal, replacements: parsed }));
+  const statements = [
+    { sql: "DELETE FROM replacements WHERE session_id = ?", args: [sessionId] },
+    { sql: "DELETE FROM goals WHERE session_id = ?", args: [sessionId] },
+    { sql: "DELETE FROM pivots WHERE session_id = ?", args: [sessionId] },
+  ];
   for (const pivot of grouped) {
-    await db.execute({ sql: "INSERT INTO pivots (id, session_id, label, created_at) VALUES (?, ?, ?, ?)", args: [pivot.id, sessionId, pivot.goal.trim(), new Date().toISOString()] });
+    const now = new Date().toISOString();
     const goalId = randomUUID();
-    await db.execute({ sql: "INSERT INTO goals (id, session_id, pivot_id, label, created_at) VALUES (?, ?, ?, ?, ?)", args: [goalId, sessionId, pivot.id, pivot.goal.trim(), new Date().toISOString()] });
-    for (const replacement of pivot.replacements.map((item) => replacementInputSchema.parse(item))) await db.execute({ sql: "INSERT INTO replacements (id, session_id, pivot_id, label, detail, duration) VALUES (?, ?, ?, ?, ?, ?)", args: [`${pivot.id}:${replacement.id}`, sessionId, pivot.id, replacement.name, replacement.detail, replacement.duration] });
+    statements.push({ sql: "INSERT INTO pivots (id, session_id, label, created_at) VALUES (?, ?, ?, ?)", args: [pivot.id, sessionId, pivot.goal.trim(), now] });
+    statements.push({ sql: "INSERT INTO goals (id, session_id, pivot_id, label, created_at) VALUES (?, ?, ?, ?, ?)", args: [goalId, sessionId, pivot.id, pivot.goal.trim(), now] });
+    for (const replacement of pivot.replacements.map((item) => replacementInputSchema.parse(item))) statements.push({ sql: "INSERT INTO replacements (id, session_id, pivot_id, label, detail, duration) VALUES (?, ?, ?, ?, ?, ?)", args: [`${pivot.id}:${replacement.id}`, sessionId, pivot.id, replacement.name, replacement.detail, replacement.duration] });
   }
+  await db.batch(statements, "write");
   return sessionId;
+}
+
+export async function createPivot(pivot: PivotInput) {
+  const sessionId = await ensureSession();
+  const replacements = pivot.replacements.map((replacement) => replacementInputSchema.parse(replacement));
+  const db = getDatabase();
+  if (!db) {
+    const snapshot = await getSnapshot();
+    memoryState.set(sessionId, { ...snapshot, goal: snapshot.goal || pivot.goal, goals: [...snapshot.goals, pivot.goal], replacements: [...snapshot.replacements, ...replacements], pivots: [...snapshot.pivots, { ...pivot, replacements }] });
+    return pivot;
+  }
+  await initializeDatabase();
+  const now = new Date().toISOString();
+  await db.batch([
+    { sql: "INSERT INTO pivots (id, session_id, label, created_at) VALUES (?, ?, ?, ?)", args: [pivot.id, sessionId, pivot.goal, now] },
+    { sql: "INSERT INTO goals (id, session_id, pivot_id, label, created_at) VALUES (?, ?, ?, ?, ?)", args: [randomUUID(), sessionId, pivot.id, pivot.goal, now] },
+    ...replacements.map((replacement) => ({ sql: "INSERT INTO replacements (id, session_id, pivot_id, label, detail, duration) VALUES (?, ?, ?, ?, ?, ?)", args: [`${pivot.id}:${replacement.id}`, sessionId, pivot.id, replacement.name, replacement.detail, replacement.duration] })),
+  ], "write");
+  return { ...pivot, replacements };
+}
+
+export async function updatePivot(pivot: PivotInput) {
+  const sessionId = await ensureSession();
+  const replacements = pivot.replacements.map((replacement) => replacementInputSchema.parse(replacement));
+  const db = getDatabase();
+  if (!db) {
+    const snapshot = await getSnapshot();
+    if (!snapshot.pivots.some((item) => item.id === pivot.id)) return false;
+    const pivots = snapshot.pivots.map((item) => item.id === pivot.id ? { ...pivot, replacements } : item);
+    memoryState.set(sessionId, { ...snapshot, goal: pivots[0]?.goal ?? "", goals: pivots.map((item) => item.goal), replacements: pivots.flatMap((item) => item.replacements), pivots });
+    return true;
+  }
+  await initializeDatabase();
+  const exists = await db.execute({ sql: "SELECT 1 FROM pivots WHERE id = ? AND session_id = ?", args: [pivot.id, sessionId] });
+  if (!exists.rows[0]) return false;
+  await db.batch([
+    { sql: "UPDATE pivots SET label = ? WHERE id = ? AND session_id = ?", args: [pivot.goal, pivot.id, sessionId] },
+    { sql: "UPDATE goals SET label = ? WHERE pivot_id = ? AND session_id = ?", args: [pivot.goal, pivot.id, sessionId] },
+    { sql: "DELETE FROM replacements WHERE pivot_id = ? AND session_id = ?", args: [pivot.id, sessionId] },
+    ...replacements.map((replacement) => ({ sql: "INSERT INTO replacements (id, session_id, pivot_id, label, detail, duration) VALUES (?, ?, ?, ?, ?, ?)", args: [`${pivot.id}:${replacement.id}`, sessionId, pivot.id, replacement.name, replacement.detail, replacement.duration] })),
+  ], "write");
+  return true;
+}
+
+export async function deletePivot(pivotId: string) {
+  const sessionId = await ensureSession();
+  const db = getDatabase();
+  if (!db) {
+    const snapshot = await getSnapshot();
+    if (!snapshot.pivots.some((item) => item.id === pivotId)) return false;
+    const pivots = snapshot.pivots.filter((item) => item.id !== pivotId);
+    memoryState.set(sessionId, { ...snapshot, goal: pivots[0]?.goal ?? "", goals: pivots.map((item) => item.goal), replacements: pivots.flatMap((item) => item.replacements), pivots });
+    return true;
+  }
+  await initializeDatabase();
+  const exists = await db.execute({ sql: "SELECT 1 FROM pivots WHERE id = ? AND session_id = ?", args: [pivotId, sessionId] });
+  if (!exists.rows[0]) return false;
+  await db.batch([
+    { sql: "DELETE FROM replacements WHERE pivot_id = ? AND session_id = ?", args: [pivotId, sessionId] },
+    { sql: "DELETE FROM goals WHERE pivot_id = ? AND session_id = ?", args: [pivotId, sessionId] },
+    { sql: "DELETE FROM pivots WHERE id = ? AND session_id = ?", args: [pivotId, sessionId] },
+  ], "write");
+  return true;
 }
 
 export async function getSnapshot(): Promise<PivotSnapshot> {
