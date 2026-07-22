@@ -90,7 +90,7 @@ test("setup supports multiple goals and a custom replacement", async ({ page }) 
   await expect(page.getByText("late night scrolling")).toBeVisible();
   await expect(page.getByText("checking email")).toBeVisible();
   await page.getByRole("button", { name: /Finish setup/ }).click();
-  await expect(page.getByText("late night scrolling")).toBeVisible();
+  await expect(page.getByRole("button", { name: "late night scrolling" })).toBeVisible();
   await expect(page.getByRole("button", { name: "checking email" })).toBeVisible();
 });
 
@@ -190,7 +190,7 @@ test("settings can edit, reorder, and delete a pivot", async ({ page }) => {
   await page.getByRole("button", { name: /Make a glass of water/ }).click();
   await page.getByRole("button", { name: "Move Make a glass of water up" }).click();
   await page.getByRole("button", { name: "Save pivot" }).click();
-  await expect(page.getByText("evening scrolling")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Edit evening scrolling" })).toBeVisible();
   await page.getByRole("link", { name: "Edit evening scrolling" }).click();
   page.once("dialog", (dialog) => dialog.accept());
   await page.getByRole("button", { name: "Delete this pivot" }).click();

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Logo, Progress, ReplacementChoice } from "@/components/pivot/ui";
+import { Icon, Logo, Progress, ReplacementChoice } from "@/components/pivot/ui";
 import { replacements, type Replacement } from "@/components/pivot/data";
 
 type Pivot = { id: string; goal: string; replacements: Replacement[] };
@@ -54,5 +54,35 @@ export default function Onboarding() {
     router.push("/");
   }
 
-  return <main className="app-shell"><div className="setup-wrap"><div className="setup-top"><Link className="brand" href="/"><Logo /><span>pivot</span></Link><span className="quiet">Private by design</span></div><Progress step={1} /><div className="setup-copy"><p className="eyebrow">Make space for a different next step</p><h1>What would you like to pivot away from?</h1><p className="lede">Create one pivot at a time. Each one can have its own set of actions that fit.</p></div><label className="field-label" htmlFor="goal">Name this pivot</label><div className="goal-add-row"><input autoFocus id="goal" className="text-input" placeholder="e.g. late night scrolling" value={goal} onChange={(e) => setGoal(e.target.value)} /></div><div className="setup-section"><p className="field-label">For this pivot, I’m open to</p><div className="choice-grid">{availableReplacements.map((item) => <ReplacementChoice key={item.id} item={item} selected={selected.includes(item.id)} onToggle={() => setSelected((current) => current.includes(item.id) ? current.filter((id) => id !== item.id) : [...current, item.id])} />)}</div><div className="custom-replacement"><label className="field-label" htmlFor="custom-replacement">Add your own action <span>Optional</span></label><div className="goal-add-row"><input id="custom-replacement" className="text-input" placeholder="e.g. sketch for five minutes" value={customName} onChange={(e) => setCustomName(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addCustomReplacement(); } }} /><button className="small-button" onClick={addCustomReplacement} disabled={!customName.trim()}>Add</button></div></div><p className="hint">Add as many actions as you want. They stay specific to this pivot.</p></div><button className="secondary-button full" disabled={!goal.trim() || !selected.length} onClick={savePivot}>{pivots.length ? "Save this pivot" : "Save pivot"} <span>＋</span></button>{pivots.length > 0 && <div className="pivot-list" aria-label="Your pivots"><p className="field-label">Your pivots</p>{pivots.map((pivot) => <article className="pivot-summary" key={pivot.id}><div><strong>{pivot.goal}</strong><span>{pivot.replacements.length} action{pivot.replacements.length === 1 ? "" : "s"} ready</span></div><button aria-label={`Remove ${pivot.goal}`} onClick={() => setPivots((current) => current.filter((item) => item.id !== pivot.id))}>×</button></article>)}</div>}<button className="primary-button full" disabled={!pivots.length} onClick={finishSetup}>Finish setup <span>→</span></button><p className="privacy-note"><span>⊙</span> No account needed. You can connect GitHub later for cross-device access.</p></div></main>;
+  return (
+    <main className="app-shell">
+      <div className="setup-wrap">
+        <div className="setup-top">
+          <Link className="brand" href="/"><Logo /><span>pivot</span></Link>
+          <span className="quiet">Private by design</span>
+        </div>
+        <Progress step={1} />
+        <div className="setup-copy">
+          <p className="eyebrow">Make space for a different next step</p>
+          <h1>What would you like to pivot away from?</h1>
+          <p className="lede">Create one pivot at a time. Each one can have its own set of actions that fit.</p>
+        </div>
+        <label className="field-label" htmlFor="goal">Name this pivot</label>
+        <div className="goal-add-row"><input autoFocus id="goal" className="text-input" placeholder="e.g. late night scrolling" value={goal} onChange={(event) => setGoal(event.target.value)} /></div>
+        <div className="setup-section">
+          <p className="field-label">For this pivot, I’m open to</p>
+          <div className="choice-grid">{availableReplacements.map((item) => <ReplacementChoice key={item.id} item={item} selected={selected.includes(item.id)} onToggle={() => setSelected((current) => current.includes(item.id) ? current.filter((id) => id !== item.id) : [...current, item.id])} />)}</div>
+          <div className="custom-replacement">
+            <label className="field-label" htmlFor="custom-replacement">Add your own action <span>Optional</span></label>
+            <div className="goal-add-row"><input id="custom-replacement" className="text-input" placeholder="e.g. sketch for five minutes" value={customName} onChange={(event) => setCustomName(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); addCustomReplacement(); } }} /><button type="button" className="small-button" onClick={addCustomReplacement} disabled={!customName.trim()}>Add</button></div>
+          </div>
+          <p className="hint">Add as many actions as you want. They stay specific to this pivot.</p>
+        </div>
+        <button type="button" className="secondary-button full" disabled={!goal.trim() || !selected.length} onClick={savePivot}>{pivots.length ? "Save this pivot" : "Save pivot"} <Icon name="plus" size={17} /></button>
+        {pivots.length > 0 && <div className="pivot-list" aria-label="Your pivots"><p className="field-label">Your pivots</p>{pivots.map((pivot) => <article className="pivot-summary" key={pivot.id}><div><strong>{pivot.goal}</strong><span>{pivot.replacements.length} action{pivot.replacements.length === 1 ? "" : "s"} ready</span></div><button type="button" aria-label={`Remove ${pivot.goal}`} onClick={() => setPivots((current) => current.filter((item) => item.id !== pivot.id))}><Icon name="close" size={17} /></button></article>)}</div>}
+        <button type="button" className="primary-button full" disabled={!pivots.length} onClick={finishSetup}>Finish setup <Icon name="arrowRight" size={18} /></button>
+        <p className="privacy-note"><span className="privacy-ic"><Icon name="shield" size={15} /></span> No account needed. You can connect GitHub later for cross-device access.</p>
+      </div>
+    </main>
+  );
 }
