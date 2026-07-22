@@ -97,6 +97,17 @@ const migrations = [
       "CREATE INDEX IF NOT EXISTS idx_rate_limits_expires ON rate_limits(expires_at)",
     ],
   },
+  {
+    version: 11,
+    statements: [
+      "CREATE TABLE IF NOT EXISTS notification_preferences (session_id TEXT PRIMARY KEY, cadence TEXT NOT NULL CHECK (cadence IN ('off', 'weekly', 'monthly')), timezone TEXT NOT NULL, updated_at TEXT NOT NULL)",
+      "CREATE TABLE IF NOT EXISTS push_subscriptions (id TEXT PRIMARY KEY, session_id TEXT NOT NULL, endpoint TEXT NOT NULL UNIQUE, p256dh TEXT NOT NULL, auth TEXT NOT NULL, expiration_time INTEGER, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)",
+      "CREATE INDEX IF NOT EXISTS idx_push_subscriptions_session ON push_subscriptions(session_id)",
+      "CREATE TABLE IF NOT EXISTS notification_deliveries (id TEXT PRIMARY KEY, subscription_id TEXT NOT NULL, cadence TEXT NOT NULL, period_key TEXT NOT NULL, scheduled_for TEXT NOT NULL, status TEXT NOT NULL, created_at TEXT NOT NULL, sent_at TEXT, error_code TEXT)",
+      "CREATE UNIQUE INDEX IF NOT EXISTS idx_notification_deliveries_dedup ON notification_deliveries(subscription_id, cadence, period_key)",
+      "CREATE INDEX IF NOT EXISTS idx_notification_deliveries_subscription ON notification_deliveries(subscription_id)",
+    ],
+  },
 ] as const;
 
 async function hasColumn(db: Client, table: string, column: string) {

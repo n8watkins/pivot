@@ -5,7 +5,9 @@ import { useEffect, useState } from "react";
 import { signIn, signOut } from "next-auth/react";
 import { AppShell, type UtilityNavItem } from "@/components/pivot/app-shell";
 import { InstallPivot } from "@/components/pivot/install-pivot";
+import { NotificationSettings } from "@/components/pivot/notification-settings";
 import { Icon } from "@/components/pivot/ui";
+import { unsubscribeCurrentPushSubscription } from "@/lib/push-client";
 
 type Pivot = { id: string; goal: string; replacements: { id: string; name: string }[] };
 type HistoryEvent = { pivotId?: string };
@@ -36,11 +38,17 @@ export default function SettingsPage() {
   async function deleteData() {
     if (!window.confirm(`Delete your pivots, history, and ${account.authenticated ? "connected Pivot account" : "anonymous session"}?`)) return;
     const response = await fetch("/api/session", { method: "DELETE" });
-    if (response.ok) { localStorage.removeItem("pivot-state"); if (account.authenticated) await signOut({ redirectTo: "/onboarding" }); else window.location.href = "/onboarding"; }
+    if (response.ok) { await unsubscribeCurrentPushSubscription({ notifyServer: false }).catch(() => undefined); localStorage.removeItem("pivot-state"); if (account.authenticated) await signOut({ redirectTo: "/onboarding" }); else window.location.href = "/onboarding"; }
     else setStatus("Your data could not be deleted. Please try again.");
   }
 
   async function disconnectAccount() {
+    try {
+      await unsubscribeCurrentPushSubscription();
+    } catch {
+      setStatus("Could not remove this device’s notifications safely. Please try again.");
+      return;
+    }
     const response = await fetch("/api/account", { method: "POST" });
     if (!response.ok) {
       setStatus("Could not sign out safely. Please try again.");
@@ -81,6 +89,7 @@ export default function SettingsPage() {
             </section>
           </div>
           <aside className="settings-side-column" aria-label="Account and privacy">
+            <NotificationSettings />
             <InstallPivot />
             <section className="settings-section">
               <div className="settings-section-heading">
@@ -92,7 +101,7 @@ export default function SettingsPage() {
             </section>
             <section className="settings-section">
               <div><span className="card-kicker">Your data</span><h2>Export or delete</h2></div>
-              <p className="settings-copy">Download a readable JSON copy of your pivots, tags, History, and active action. One-time context notes are never included because Pivot does not store them.</p>
+              <p className="settings-copy">Download a readable JSON copy of your pivots, tags, History, active action, and notification preference. One-time context notes are never included because Pivot does not store them.</p>
               <a className="secondary-button full" href="/api/export" download>Download my data <Icon name="download" size={18} /></a>
               <button type="button" className="danger-button" onClick={deleteData}>Delete all my data</button>
               {status && <p className="form-status" role="status">{status}</p>}

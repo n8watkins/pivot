@@ -98,6 +98,18 @@ textarea {
   outline-offset: 3px;
 }
 
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .skip-link {
   position: fixed;
   top: 10px;
@@ -1580,6 +1592,74 @@ h1 {
 
 .install-section .form-status,
 .install-section .success-status {
+  margin: 14px 0 0;
+}
+
+.notification-options {
+  display: grid;
+  gap: 9px;
+  margin: 0;
+  border: 0;
+  padding: 0;
+}
+
+.notification-options label {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  align-items: center;
+  gap: 11px;
+  min-height: 58px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--card);
+  cursor: pointer;
+  padding: 10px 13px;
+}
+
+.notification-options label.selected {
+  border-color: var(--deep-sage);
+  background: var(--sage-tint-2);
+}
+
+.notification-options label.unavailable {
+  cursor: not-allowed;
+  opacity: .5;
+}
+
+.notification-options input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--deep-sage);
+}
+
+.notification-options strong,
+.notification-options small {
+  display: block;
+}
+
+.notification-options strong {
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.notification-options small {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.notification-privacy {
+  margin: 14px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.notification-section .hint,
+.notification-section .form-status,
+.notification-section .success-status {
   margin: 14px 0 0;
 }
 

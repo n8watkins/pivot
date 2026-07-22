@@ -15,5 +15,6 @@ describe("runtime configuration", () => {
     });
     expect(getRuntimeCapabilities({ GEMINI_API_KEY: "secret", ENABLE_GEMINI_RECOMMENDATIONS: "true" }).recommendations).toBe("gemini-with-fallback");
     expect(getRuntimeCapabilities({ AUTH_SECRET: "set" }).authPartiallyConfigured).toBe(true);
+    expect(getRuntimeCapabilities({ WEB_PUSH_VAPID_PUBLIC_KEY: "public", WEB_PUSH_VAPID_PRIVATE_KEY: "private", WEB_PUSH_SUBJECT: "mailto:privacy@example.com", CRON_SECRET: "cron" })).toMatchObject({ notifications: "web-push", notificationScheduler: "ready" });
   });
 });
