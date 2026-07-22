@@ -7,7 +7,7 @@ import { isRateLimited, rateLimitResponse } from "@/lib/rate-limit";
 
 export async function POST(request: Request) {
   const sessionId = await ensureSession();
-  if (isRateLimited(`recommendation:${sessionId}`, 20)) return rateLimitResponse();
+  if (await isRateLimited(`recommendation:${sessionId}`, 20, { database: getDatabase() })) return rateLimitResponse();
   const body = await request.json().catch(() => ({}));
   const parsedInput = recommendationInputSchema.safeParse(body);
   if (!parsedInput.success) return NextResponse.json({ error: "Invalid recommendation input" }, { status: 400 });

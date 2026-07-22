@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import { startIntervention } from "@/lib/domain";
-import { ensureSession } from "@/lib/session";
+import { ensureSession, getDatabase } from "@/lib/session";
 import { isRateLimited, rateLimitResponse } from "@/lib/rate-limit";
 import { interventionInputSchema } from "@/lib/schemas";
 
 export async function POST(request: Request) {
   const sessionId = await ensureSession();
-  if (isRateLimited(`intervention:${sessionId}`, 30)) return rateLimitResponse();
+  if (await isRateLimited(`intervention:${sessionId}`, 30, { database: getDatabase() })) return rateLimitResponse();
   const body = await request.json().catch(() => ({}));
   const parsed = interventionInputSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: "Pivot and replacement are required" }, { status: 400 });

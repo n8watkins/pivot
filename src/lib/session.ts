@@ -8,6 +8,7 @@ import { getRuntimeCapabilities } from "./config";
 
 export const SESSION_COOKIE = "pivot_session";
 let client: Client | null = null;
+let initialization: Promise<void> | null = null;
 const memorySessions = new Map<string, { id: string; createdAt: string }>();
 const memoryEvents = new Map<string, { id: string; sessionId: string; type: string; payload: string }>();
 
@@ -20,7 +21,11 @@ export function getDatabase() {
 export async function initializeDatabase() {
   const db = getDatabase();
   if (!db) return;
-  await migrate(db);
+  initialization ??= migrate(db).catch((error) => {
+    initialization = null;
+    throw error;
+  });
+  await initialization;
 }
 
 export async function ensureSession() {

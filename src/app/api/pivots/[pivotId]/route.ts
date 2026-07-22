@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server";
 import { deletePivot, updatePivot } from "@/lib/domain";
 import { pivotInputSchema } from "@/lib/schemas";
-import { ensureSession } from "@/lib/session";
+import { ensureSession, getDatabase } from "@/lib/session";
 import { isRateLimited, rateLimitResponse } from "@/lib/rate-limit";
 
 type RouteContext = { params: Promise<{ pivotId: string }> };
 
 export async function PATCH(request: Request, context: RouteContext) {
   const sessionId = await ensureSession();
-  if (isRateLimited(`pivots:${sessionId}`, 30)) return rateLimitResponse();
+  if (await isRateLimited(`pivots:${sessionId}`, 30, { database: getDatabase() })) return rateLimitResponse();
   const { pivotId } = await context.params;
   const body = await request.json().catch(() => ({}));
   const parsed = pivotInputSchema.safeParse({ ...body, id: pivotId });
@@ -19,7 +19,7 @@ export async function PATCH(request: Request, context: RouteContext) {
 
 export async function DELETE(_request: Request, context: RouteContext) {
   const sessionId = await ensureSession();
-  if (isRateLimited(`pivots:${sessionId}`, 30)) return rateLimitResponse();
+  if (await isRateLimited(`pivots:${sessionId}`, 30, { database: getDatabase() })) return rateLimitResponse();
   const { pivotId } = await context.params;
   if (!await deletePivot(pivotId)) return NextResponse.json({ error: "Pivot not found." }, { status: 404 });
   return NextResponse.json({ deleted: true });
