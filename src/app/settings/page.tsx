@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { signIn, signOut } from "next-auth/react";
 import { AppShell, type UtilityNavItem } from "@/components/pivot/app-shell";
@@ -17,6 +18,7 @@ const utilityNav: UtilityNavItem[] = [
 ];
 
 export default function SettingsPage() {
+  const router = useRouter();
   const [pivots, setPivots] = useState<Pivot[]>([]);
   const [pivotCounts, setPivotCounts] = useState<Record<string, number>>({});
   const [contextTags, setContextTags] = useState<string[]>([]);
@@ -35,7 +37,7 @@ export default function SettingsPage() {
   async function deleteData() {
     if (!window.confirm(`Delete your pivots, history, and ${account.authenticated ? "connected Pivot account" : "anonymous session"}?`)) return;
     const response = await fetch("/api/session", { method: "DELETE" });
-    if (response.ok) { localStorage.removeItem("pivot-state"); if (account.authenticated) await signOut({ redirectTo: "/onboarding" }); else window.location.href = "/onboarding"; }
+    if (response.ok) { localStorage.removeItem("pivot-state"); if (account.authenticated) await signOut({ redirectTo: "/onboarding" }); else router.push("/onboarding"); }
     else setStatus("Your data could not be deleted. Please try again.");
   }
 
