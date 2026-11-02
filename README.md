@@ -16,7 +16,9 @@ It supports any everyday habit, keeps each habit and its replacement actions in 
 - Pivot-aware History with event deletion and preserved labels after pivot deletion.
 - JSON data export and complete account or anonymous-session deletion.
 - Optional GitHub sign-in that upgrades and merges an existing anonymous session.
-- High-risk and unsupported clinical-category routing before normal recommendations.
+- Crisis routing before normal recommendations: clear self-harm or suicide language, or a Gemini safety flag, shows 988 and findahelpline.com instead of a habit suggestion.
+- Unsupported clinical-category routing to specialized support.
+- Short privacy and terms pages at `/privacy` and `/terms`, linked from onboarding, Settings, and the note field.
 
 Pivot is not medical care, crisis care, or a substitute for a qualified professional.
 Realtime voice is intentionally outside this release.

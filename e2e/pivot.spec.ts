@@ -48,6 +48,7 @@ test("high-risk context routes away from a normal recommendation", async ({ page
 test("crisis language shows the support card instead of a habit suggestion", async ({ page }) => {
   await createBasicPivot(page);
   await page.getByRole("button", { name: /I’m having an urge/ }).click();
+  await expect(page.getByText("Your note is sent to Google Gemini for this suggestion and is never stored.")).toBeVisible();
   await page.getByLabel(/Anything else on your mind/).fill("I feel suicidal");
   await page.getByRole("button", { name: /Show me a next step/ }).click();
   await expect(page.getByRole("heading", { name: "This sounds heavier than what Pivot is built for." })).toBeVisible();
@@ -69,6 +70,17 @@ test("everyday idioms still get a normal suggestion", async ({ page }) => {
   await page.getByLabel(/Anything else on your mind/).fill("this commute is killing me");
   await page.getByRole("button", { name: /Show me a next step/ }).click();
   await expect(page.getByRole("heading", { name: /Try this for/ })).toBeVisible();
+});
+
+test("privacy and terms pages are linked from settings", async ({ page }) => {
+  await page.goto("/settings");
+  await page.getByRole("navigation", { name: "Legal" }).getByRole("link", { name: "Privacy" }).click();
+  await expect(page.getByRole("heading", { name: "Your data, plainly." })).toBeVisible();
+  await expect(page.getByText(/never saved by Pivot/)).toBeVisible();
+  await expect(page.getByText(/sent to Google’s Gemini API|sent to Google's Gemini API/)).toBeVisible();
+  await page.getByRole("navigation", { name: "Legal" }).getByRole("link", { name: "Terms" }).click();
+  await expect(page.getByRole("heading", { name: "The short version." })).toBeVisible();
+  await expect(page.getByText(/not medical or mental-health treatment/)).toBeVisible();
 });
 
 test("unsupported clinical context routes to specialized support", async ({ page }) => {

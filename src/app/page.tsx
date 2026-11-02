@@ -325,7 +325,7 @@ export default function Home() {
             <div className="urge-note-column">
               <label className="field-label" htmlFor="context-note">Anything else on your mind? <span>Optional</span></label>
               <textarea id="context-note" className="text-input text-area" placeholder="A few words, if useful" value={contextNote} onChange={(event) => setContextNote(event.target.value)} />
-              <p className="private-field-note">This note is used for this recommendation and is not saved to History.</p>
+              <p className="private-field-note">Your note is sent to Google Gemini for this suggestion and is never stored. <Link href="/privacy">Privacy</Link></p>
               <div className="intensity">
                 <div><span className="field-label">How strong is it?</span><strong>{urge} / 10</strong></div>
                 <input type="range" min="1" max="10" value={urge} onChange={(event) => setUrge(Number(event.target.value))} aria-label="Urge intensity" />
