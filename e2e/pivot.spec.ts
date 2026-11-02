@@ -41,8 +41,46 @@ test("high-risk context routes away from a normal recommendation", async ({ page
   await page.getByRole("button", { name: /I’m having an urge/ }).click();
   await page.getByLabel(/Anything else on your mind/).fill("I want to hurt myself");
   await page.getByRole("button", { name: /Show me a next step/ }).click();
-  await expect(page.getByRole("heading", { name: "This may need immediate support." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "This sounds heavier than what Pivot is built for." })).toBeVisible();
   await expect(page.getByRole("link", { name: /Call 988/ })).toBeVisible();
+});
+
+test("crisis language shows the support card instead of a habit suggestion", async ({ page }) => {
+  await createBasicPivot(page);
+  await page.getByRole("button", { name: /I’m having an urge/ }).click();
+  await expect(page.getByText("Your note is sent to Google Gemini for this suggestion and is never stored.")).toBeVisible();
+  await page.getByLabel(/Anything else on your mind/).fill("I feel suicidal");
+  await page.getByRole("button", { name: /Show me a next step/ }).click();
+  await expect(page.getByRole("heading", { name: "This sounds heavier than what Pivot is built for." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Try this for/ })).toHaveCount(0);
+  await expect(page.getByText(/call or text 988 \(Suicide & Crisis Lifeline\) any time/)).toBeVisible();
+  await expect(page.getByRole("link", { name: "988", exact: true })).toHaveAttribute("href", "tel:988");
+  await expect(page.getByRole("link", { name: /Call 988/ })).toHaveAttribute("href", "tel:988");
+  await expect(page.getByRole("link", { name: "findahelpline.com" })).toHaveAttribute("href", "https://findahelpline.com");
+  await expect(page.getByText("If you are in immediate danger, call your local emergency number.")).toBeVisible();
+  await page.getByRole("button", { name: "Back to Pivot" }).click();
+  await expect(page.getByRole("heading", { name: "Ready when you are." })).toBeVisible();
+  await page.getByRole("button", { name: /I’m having an urge/ }).click();
+  await expect(page.getByLabel(/Anything else on your mind/)).toHaveValue("");
+});
+
+test("everyday idioms still get a normal suggestion", async ({ page }) => {
+  await createBasicPivot(page);
+  await page.getByRole("button", { name: /I’m having an urge/ }).click();
+  await page.getByLabel(/Anything else on your mind/).fill("this commute is killing me");
+  await page.getByRole("button", { name: /Show me a next step/ }).click();
+  await expect(page.getByRole("heading", { name: /Try this for/ })).toBeVisible();
+});
+
+test("privacy and terms pages are linked from settings", async ({ page }) => {
+  await page.goto("/settings");
+  await page.getByRole("navigation", { name: "Legal" }).getByRole("link", { name: "Privacy" }).click();
+  await expect(page.getByRole("heading", { name: "Your data, plainly." })).toBeVisible();
+  await expect(page.getByText(/never saved by Pivot/)).toBeVisible();
+  await expect(page.getByText(/sent to Google’s Gemini API|sent to Google's Gemini API/)).toBeVisible();
+  await page.getByRole("navigation", { name: "Legal" }).getByRole("link", { name: "Terms" }).click();
+  await expect(page.getByRole("heading", { name: "The short version." })).toBeVisible();
+  await expect(page.getByText(/not medical or mental-health treatment/)).toBeVisible();
 });
 
 test("unsupported clinical context routes to specialized support", async ({ page }) => {

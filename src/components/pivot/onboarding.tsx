@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { LegalLinks } from "@/components/pivot/legal-page";
 import { Icon, Logo, Progress, ReplacementChoice } from "@/components/pivot/ui";
 import { replacements, type Replacement } from "@/components/pivot/data";
 
@@ -82,6 +83,7 @@ export default function Onboarding() {
         {pivots.length > 0 && <div className="pivot-list" aria-label="Your pivots"><p className="field-label">Your pivots</p>{pivots.map((pivot) => <article className="pivot-summary" key={pivot.id}><div><strong>{pivot.goal}</strong><span>{pivot.replacements.length} action{pivot.replacements.length === 1 ? "" : "s"} ready</span></div><button type="button" aria-label={`Remove ${pivot.goal}`} onClick={() => setPivots((current) => current.filter((item) => item.id !== pivot.id))}><Icon name="close" size={17} /></button></article>)}</div>}
         <button type="button" className="primary-button full" disabled={!pivots.length} onClick={finishSetup}>Finish setup <Icon name="arrowRight" size={18} /></button>
         <p className="privacy-note"><span className="privacy-ic"><Icon name="shield" size={15} /></span> No account needed. You can connect GitHub later for cross-device access.</p>
+        <LegalLinks />
       </div>
     </main>
   );
