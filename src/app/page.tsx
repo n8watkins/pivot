@@ -440,24 +440,28 @@ export default function Home() {
 
       {screen === "safety" && (
         <section className="flow-screen">
-          <p className="eyebrow">A different kind of support</p>
-          <h1>{safetyKind === "high-risk" ? "This may need immediate support." : "This needs specialized support."}</h1>
           {safetyKind === "high-risk" ? (
             <>
-              <p className="lede">Pivot is not crisis care. If you might hurt yourself or someone else, contact local emergency services or a trusted person now.</p>
-              <div className="support-card">
-                <strong>In the United States or Canada</strong>
-                <p>Call or text 988 to reach trained crisis support. If there is immediate danger, call emergency services.</p>
+              <p className="eyebrow">Let’s pause here</p>
+              <h1 className="crisis-heading">This sounds heavier than what Pivot is built for.</h1>
+              <p className="lede">You deserve support from a real person right now. Reaching out is a strong next step.</p>
+              <div className="support-card crisis-card">
+                <strong>Talk to someone now</strong>
+                <p>In the US, call or text <a href="tel:988">988</a> (Suicide &amp; Crisis Lifeline) any time. It is free and confidential.</p>
+                <p>Outside the US, find a local helpline at <a href="https://findahelpline.com" target="_blank" rel="noopener noreferrer">findahelpline.com</a>.</p>
+                <p>If you are in immediate danger, call your local emergency number.</p>
                 <a href="tel:988" className="primary-button full">Call 988 <Icon name="arrowRight" size={18} /></a>
               </div>
             </>
           ) : (
             <>
+              <p className="eyebrow">A different kind of support</p>
+              <h1>This needs specialized support.</h1>
               <p className="lede">Pivot is designed for everyday habits, not clinical treatment. A qualified professional or specialized service can offer safer, more appropriate support for this.</p>
               <div className="support-card"><strong>You can still take one small step</strong><p>Consider contacting a healthcare professional or someone you trust who can help you find specialized support.</p></div>
             </>
           )}
-          <button type="button" className="quiet-button" onClick={() => setScreen("home")}>Return to Pivot</button>
+          <button type="button" className="quiet-button" onClick={() => { setContextNote(""); setScreen("home"); }}>Back to Pivot</button>
         </section>
       )}
     </AppShell>

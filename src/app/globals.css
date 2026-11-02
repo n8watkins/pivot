@@ -932,6 +932,22 @@ h1 {
   margin-top: 16px;
 }
 
+.support-card p a {
+  color: var(--deep-sage);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.flow-screen h1.crisis-heading {
+  max-width: 19ch;
+}
+
+.crisis-card p {
+  color: var(--ink-soft);
+  font-size: 14px;
+}
+
 /* ============================================================
    Active screen (orbit timer)
    ============================================================ */
