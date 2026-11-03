@@ -3,6 +3,7 @@ import { deterministicFallback, hasHighRiskContext, hasUnsupportedContext, inter
 import { ensureSession, getDatabase } from "@/lib/session";
 import { getSnapshot } from "@/lib/domain";
 import { recommendationInputSchema } from "@/lib/schemas";
+import { GEMINI_ENDPOINT, buildGeminiRequest } from "@/lib/gemini";
 import { isRateLimited, rateLimitResponse } from "@/lib/rate-limit";
 import { networkRateLimitKey, rejectCrossOriginMutation } from "@/lib/request-security";
 
@@ -43,11 +44,18 @@ export async function POST(request: Request) {
         `Rule-based pick for this context: ${recommendation.replacementId}.`,
       ].filter(Boolean).join(" ");
       const prompt = `Choose only from these approved replacements: ${JSON.stringify(replacements)}. Context: ${context || "none given"}. ${signals} Return JSON with replacementId, reason, firstStep, alternatives (max 2 ids), safety (safe|review|blocked). Write reason as one short, kind sentence to the user that refers to what they shared (under 140 characters). Set safety to blocked if the context mentions suicide, self-harm, wanting to die, or danger to anyone.`;
-      const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent", { method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey }, signal: AbortSignal.timeout(3500), body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json" } }) });
-      const outcome = interpretGeminiPayload(await response.json(), replacements);
+      const startedAt = Date.now();
+      const response = await fetch(GEMINI_ENDPOINT, buildGeminiRequest(prompt, apiKey));
+      const payload = await response.json().catch(() => null);
+      // Log only the status and timing, never the note or the response text.
+      if (!response.ok) console.warn(`Gemini returned HTTP ${response.status} after ${Date.now() - startedAt} ms; using the built-in suggestion.`);
+      const outcome = interpretGeminiPayload(response.ok ? payload : null, replacements);
       if (outcome.kind === "support") return supportResponse();
       if (outcome.kind === "recommendation") { recommendation = outcome.recommendation; source = "gemini"; }
-    } catch { /* Deterministic fallback is the intended failure mode. */ }
+    } catch (error) {
+      // Deterministic fallback is the intended failure mode.
+      console.warn(`Gemini request failed (${error instanceof Error ? error.name : "unknown"}); using the built-in suggestion.`);
+    }
   }
   return NextResponse.json({ ...recommendation, source });
 }
