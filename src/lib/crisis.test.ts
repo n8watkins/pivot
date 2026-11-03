@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { hasCrisisLanguage, hasHighRiskContext, hasUnsupportedContext, normalizeForSafety } from "./crisis";
+import { assessSafety, hasCrisisLanguage, hasHighRiskContext, hasUnsupportedContext, normalizeForSafety, type CrisisCategory, type SpecializedCategory } from "./crisis";
 
 describe("normalizeForSafety", () => {
   it("lowercases and strips punctuation, apostrophes, and accents", () => {
@@ -186,5 +186,190 @@ describe("unsupported clinical context", () => {
 
   it.each(["I keep checking my email", "bored"])("does not flag %j", (note) => {
     expect(hasUnsupportedContext(note)).toBe(false);
+  });
+});
+
+// November 2026 audit: phrasings that used to get a habit suggestion, grouped by why they must
+// route to crisis resources. Each row is [note, category that must be among the matches].
+const categorizedCrisisPhrases: [string, CrisisCategory][] = [
+  // Passive suicidal ideation.
+  ["im so tired of being alive", "suicide"],
+  ["im tired of living", "suicide"],
+  ["sick of life", "suicide"],
+  ["done with life", "suicide"],
+  ["I'm done with everything", "suicide"],
+  ["i want to give up on life", "suicide"],
+  ["nobody would miss me if i was gone", "suicide"],
+  ["no one would even notice", "suicide"],
+  ["no one would care if I disappeared", "suicide"],
+  ["i want to disappear", "suicide"],
+  ["I wish I could just disappear", "suicide"],
+  ["i want to sleep forever", "suicide"],
+  ["I wish I wouldn't wake up", "suicide"],
+  ["i hate my life and want it over", "suicide"],
+  ["I want it to be over", "suicide"],
+  ["i'm a burden to everyone", "suicide"],
+  ["I feel like a burden", "suicide"],
+  ["I'm just a burden on my family", "suicide"],
+  ["life feels pointless", "suicide"],
+  ["life is meaningless", "suicide"],
+  ["I feel hopeless", "suicide"],
+  ["nothing to live for", "suicide"],
+  ["I have pills saved up", "suicide"],
+  ["i've been stockpiling my meds", "suicide"],
+  ["I wish someone would kill me", "suicide"],
+  ["I can't be here anymore", "suicide"],
+  // Obfuscated spellings, leetspeak, and letter spacing.
+  ["I wanna k*ll myself", "suicide"],
+  ["i want to k1ll myself", "suicide"],
+  ["kil myself", "suicide"],
+  ["ki11 myself", "suicide"],
+  ["k i l l myself", "suicide"],
+  ["k.i.l.l. myself", "suicide"],
+  ["s u i c i d e", "suicide"],
+  ["$uicidal", "suicide"],
+  ["su1c1dal", "suicide"],
+  ["I want to d!e", "suicide"],
+  ["I want to d1e", "suicide"],
+  ["unal1ve myself", "suicide"],
+  ["I want to kill my self!!!", "suicide"],
+  // Non-English.
+  ["quiero morir", "suicide"],
+  ["me quiero morir", "suicide"],
+  ["je veux mourir", "suicide"],
+  ["ich will sterben", "suicide"],
+  // Self-harm.
+  ["I want to make myself bleed", "self-harm"],
+  ["I keep hitting myself", "self-harm"],
+  ["I scratch myself until it bleeds", "self-harm"],
+  ["relapsed on self harm", "self-harm"],
+  ["I want to starve myself", "self-harm"],
+  // Abuse and domestic violence.
+  ["i'm in an abusive relationship", "abuse"],
+  ["my partner hits me", "abuse"],
+  ["he hits me when he drinks", "abuse"],
+  ["my husband choked me", "abuse"],
+  ["my dad beats me", "abuse"],
+  ["she threatened to kill me", "abuse"],
+  ["im scared to go home", "abuse"],
+  ["I'm afraid of my boyfriend", "abuse"],
+  ["I don't feel safe at home", "abuse"],
+  ["domestic violence at home", "abuse"],
+  ["he's abusive", "abuse"],
+  ["I was abused as a kid", "abuse"],
+  // Sexual assault.
+  ["I was raped", "sexual-assault"],
+  ["I got raped last night", "sexual-assault"],
+  ["I was sexually assaulted", "sexual-assault"],
+  ["someone groped me", "sexual-assault"],
+  ["he forced me to have sex", "sexual-assault"],
+  ["he touched me without asking", "sexual-assault"],
+  ["I didn't consent", "sexual-assault"],
+  ["I think someone drugged me", "sexual-assault"],
+  ["someone spiked my drink", "sexual-assault"],
+  // Overdose and medical emergency.
+  ["I overdosed", "overdose"],
+  ["took too many pills", "overdose"],
+  ["I took a whole bottle of tylenol", "overdose"],
+  ["I swallowed a handful of pills", "overdose"],
+  ["I mixed xanax and alcohol", "overdose"],
+  ["I drank bleach", "overdose"],
+  ["I think I'm poisoned", "overdose"],
+  ["I can't breathe", "overdose"],
+  ["my friend is unconscious", "overdose"],
+  ["she's not breathing", "overdose"],
+  // Harm to others.
+  ["I want to hurt someone", "harm-to-others"],
+  ["I'm going to kill him", "harm-to-others"],
+  ["I want to hurt her", "harm-to-others"],
+  ["I might hurt my baby", "harm-to-others"],
+  ["I want to shoot up my school", "harm-to-others"],
+  ["I want to strangle my roommate", "harm-to-others"],
+];
+
+// Everyday habit notes that share words with the patterns above. None may route to crisis resources.
+const moreEverydayPhrases = [
+  "killing it at work today",
+  "I'm killing it at the gym",
+  "dying to scroll",
+  "dying for a coffee",
+  "I'm scared to death of my inbox",
+  "dead serious, I need to stop",
+  "kill time before my meeting",
+  "this meeting is killing me",
+  "my back is killing me",
+  "I'm tired of scrolling",
+  "tired of checking email",
+  "sick of my phone",
+  "done with social media",
+  "I'm done with this show",
+  "I can't live without coffee",
+  "I want to give up sugar",
+  "I gave up on the diet",
+  "I hurt her feelings",
+  "I want to beat him at chess",
+  "I beat them in a game",
+  "I'm going to burn myself out at work",
+  "I want to treat myself",
+  "food poisoning last week",
+  "I had too many snacks",
+  "I took too much time scrolling",
+  "I spent too much on coffee",
+  "I'm addicted to my phone",
+  "phone addiction",
+  "I relapsed on doomscrolling",
+  "purge my closet",
+  "crack open a book",
+  "cracked my phone screen",
+  "I need to detach",
+  "I keep checking the 988 number for my friend",
+  "2am and wide awake",
+  "I want 2 snacks",
+  "u r so bored",
+  "a b c",
+  "Avoiding something",
+  "Just automatic",
+  "Stressed",
+];
+
+describe("crisis categories (November 2026 audit)", () => {
+  it.each(categorizedCrisisPhrases)("routes %j to crisis resources for %s", (note, category) => {
+    const result = assessSafety(note);
+    expect(result.route).toBe("crisis");
+    expect(result.categories).toContain(category);
+  });
+
+  it.each(moreEverydayPhrases)("does not route %j to crisis resources", (note) => {
+    expect(assessSafety(note).route).not.toBe("crisis");
+  });
+
+  it("keeps the habit flow for most everyday notes", () => {
+    const routed = moreEverydayPhrases.filter((note) => assessSafety(note).route !== null);
+    expect(routed).toEqual([]);
+  });
+});
+
+describe("specialized categories", () => {
+  it.each<[string, SpecializedCategory]>([
+    ["I need help with an eating disorder", "eating"],
+    ["I binge then make myself throw up", "eating"],
+    ["I throw up after I eat", "eating"],
+    ["I relapsed and used heroin again", "substance-use"],
+    ["I want to use again, craving heroin", "substance-use"],
+    ["drinking every night to cope", "substance-use"],
+    ["i want to drink until i pass out", "substance-use"],
+    ["withdrawal shakes", "substance-use"],
+    ["my substance abuse is getting worse", "substance-use"],
+    ["I think I'm an alcoholic", "substance-use"],
+    ["hearing voices", "mental-health"],
+    ["I think I'm psychotic", "mental-health"],
+  ])("routes %j to specialized support for %s", (note, category) => {
+    const result = assessSafety(note);
+    expect(result.route).toBe("specialized");
+    expect(result.categories).toContain(category);
+  });
+
+  it("prefers crisis resources when a note is both", () => {
+    expect(assessSafety("I relapsed on heroin and want to die").route).toBe("crisis");
   });
 });

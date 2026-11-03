@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Logo } from "@/components/pivot/ui";
+import { SafetyFooter } from "@/components/pivot/legal-page";
 
 export default function OfflinePage() {
   return (
@@ -11,6 +12,7 @@ export default function OfflinePage() {
         <p className="lede">Previously loaded screens may still be available. Pivot never caches your account data, notes, or check-in history.</p>
         <Link className="primary-button" href="/">Try again</Link>
       </div>
+      <SafetyFooter />
     </main>
   );
 }

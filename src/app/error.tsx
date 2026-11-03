@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect } from "react";
+import { SafetyFooter } from "@/components/pivot/legal-page";
 
 export default function ErrorPage({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   useEffect(() => {
@@ -16,6 +17,7 @@ export default function ErrorPage({ error, reset }: { error: Error & { digest?: 
         <p className="lede">Your saved data is still in place. Try the page again or return to your pause space.</p>
         <button type="button" className="primary-button full" onClick={reset}>Try again</button>
         <Link className="quiet-button" href="/">Return home</Link>
+        <SafetyFooter />
       </div>
     </main>
   );

@@ -6,7 +6,9 @@ import { defaultContextTags, replacements, type Replacement } from "@/components
 import { AppShell, type UtilityNavItem } from "@/components/pivot/app-shell";
 import { PivotStatsRail } from "@/components/pivot/pivot-stats-rail";
 import { Icon, Progress, ReplacementIcon } from "@/components/pivot/ui";
-import { crisisResources, hasHighRiskContext, hasUnsupportedContext } from "@/lib/crisis";
+import { assessSafety, crisisResources, type CrisisCategory, type SpecializedCategory } from "@/lib/crisis";
+import { resourcesForCrisis, resourcesForSpecialized } from "@/lib/crisis-resources";
+import { EmergencyAndInternational, ResourceList } from "@/components/pivot/crisis-resources";
 import { rankWithContext } from "@/lib/ranking";
 import { fallbackFirstStep } from "@/lib/replacement-copy";
 import { RECOMMENDATION_REQUEST_TIMEOUT_MS } from "@/lib/gemini";
@@ -74,6 +76,7 @@ export default function Home() {
   const [flowError, setFlowError] = useState("");
   const [completionMessage, setCompletionMessage] = useState("");
   const [safetyKind, setSafetyKind] = useState<"high-risk" | "specialized">("high-risk");
+  const [safetyCategories, setSafetyCategories] = useState<string[]>([]);
   const [history, setHistory] = useState<HistoryEvent[]>([]);
 
   useEffect(() => {
@@ -191,10 +194,11 @@ export default function Home() {
     const recommendationContext = [context, contextNote].filter(Boolean).join(". ");
     // Check on the device first, so crisis resources appear immediately and never depend on
     // the network or the recommendation service. The server repeats the same check.
-    const localRoute = hasHighRiskContext(recommendationContext) ? "high-risk" : hasUnsupportedContext(recommendationContext) ? "specialized" : null;
-    if (localRoute) {
+    const assessment = assessSafety(recommendationContext);
+    if (assessment.route) {
       setIsRecommending(false);
-      setSafetyKind(localRoute);
+      setSafetyKind(assessment.route === "crisis" ? "high-risk" : "specialized");
+      setSafetyCategories(assessment.categories);
       setScreen("safety");
       return;
     }
@@ -209,6 +213,7 @@ export default function Home() {
     setIsRecommending(false);
     if (result?.route === "support" || result?.route === "specialized") {
       setSafetyKind(result.route === "support" ? "high-risk" : "specialized");
+      setSafetyCategories(Array.isArray(result.categories) ? result.categories.filter((item: unknown): item is string => typeof item === "string") : []);
       setScreen("safety");
       return;
     }
@@ -576,6 +581,7 @@ export default function Home() {
               <p className="eyebrow">Let’s pause here</p>
               <h1 className="crisis-heading">This sounds heavier than what Pivot is built for.</h1>
               <p className="lede">You deserve support from a real person right now. Reaching out is a strong next step.</p>
+              <ResourceList resources={resourcesForCrisis(safetyCategories as CrisisCategory[]).filter((resource) => resource.id !== "crisis-text")} />
               <div className="support-card crisis-card">
                 <strong>Talk to someone now</strong>
                 <p>In the US, call or text <a href={crisisResources.call}>988</a> (Suicide &amp; Crisis Lifeline) any time, or <a href={crisisResources.chat} target="_blank" rel="noopener noreferrer">chat online</a>. It is free and confidential.</p>
@@ -583,16 +589,18 @@ export default function Home() {
                   <a href={crisisResources.call} className="primary-button full">Call 988 <Icon name="arrowRight" size={18} /></a>
                   <a href={crisisResources.text} className="secondary-button full">Text 988</a>
                 </div>
-                <p>Outside the US, find a local helpline at <a href={crisisResources.international} target="_blank" rel="noopener noreferrer">findahelpline.com</a>.</p>
-                <p><strong className="crisis-emergency">If you are in immediate danger, call your local emergency number (911 in the US).</strong></p>
               </div>
+              <ResourceList resources={resourcesForCrisis(safetyCategories as CrisisCategory[]).filter((resource) => resource.id === "crisis-text")} />
+              <EmergencyAndInternational />
             </>
           ) : (
             <>
               <p className="eyebrow">A different kind of support</p>
               <h1>This needs specialized support.</h1>
               <p className="lede">Pivot is designed for everyday habits, not clinical treatment. A qualified professional or specialized service can offer safer, more appropriate support for this.</p>
-              <div className="support-card"><strong>You can still take one small step</strong><p>Consider contacting a healthcare professional or someone you trust who can help you find specialized support.</p></div>
+              <p className="resource-intro">Free, confidential lines you can reach right now, any time:</p>
+              <ResourceList resources={resourcesForSpecialized(safetyCategories as SpecializedCategory[])} />
+              <EmergencyAndInternational />
             </>
           )}
           <button type="button" className="quiet-button" onClick={() => { setContextNote(""); reset(); }}>Back to Pivot</button>
