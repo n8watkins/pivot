@@ -210,6 +210,15 @@ The [`Deploy`](.github/workflows/deploy.yml) workflow deploys `main` after CI pa
 Only `main` deploys, so `release/*` branches from the release train never do (on Vercel, `vercel.json` turns them off).
 Auth.js builds its URLs from `AUTH_URL`, so register `https://pivot.n8builds.dev/api/auth/callback/github` as the GitHub OAuth app's callback URL.
 
+### Reading the logs
+
+Workers Logs keeps every request (`observability` in `wrangler.jsonc`, `head_sampling_rate: 1`).
+In the Cloudflare dashboard, open Workers & Pages, then the `pivot` Worker, then Logs.
+To stream them live, run `npx wrangler tail pivot --format pretty`.
+`--search` matches log messages only, not request URLs, so use `--status error` or no filter to see requests.
+Failures log one JSON line with `event`, `reason` and `route`: Auth.js errors as `auth_error` with the error type (such as `CallbackRouteError` or `InvalidCheck`), a masked message and the provider's OAuth error code, and errors thrown in pages, route handlers or the proxy as `unhandled_exception` with the route (`src/instrumentation.ts`).
+They never carry secrets, tokens, OAuth codes or state values, cookies, emails or other personal data.
+
 ## Deploy
 
 Create a Turso database and set `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` as Worker secrets before the first production request.

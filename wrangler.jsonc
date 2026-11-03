@@ -18,7 +18,8 @@
     "binding": "ASSETS"
   },
   "observability": {
-    "enabled": true
+    "enabled": true,
+    "head_sampling_rate": 1
   },
   // Hourly at :07, as the GitHub Actions schedule was: /api/cron/notifications
   // sends the check-ins that are due at 09:00 in each subscriber's timezone.
