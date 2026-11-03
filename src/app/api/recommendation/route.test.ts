@@ -42,7 +42,7 @@ describe("POST /api/recommendation with Gemini on", () => {
 
   it("routes crisis language to support without calling Gemini", async () => {
     const response = await POST(recommendationRequest("I want to hurt myself"));
-    expect(await response.json()).toEqual({ safety: "review", route: "support" });
+    expect(await response.json()).toEqual({ safety: "review", route: "support", categories: ["self-harm"] });
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
@@ -71,6 +71,6 @@ describe("POST /api/recommendation with Gemini on", () => {
   it("routes to support when Gemini flags the note", async () => {
     fetchMock.mockResolvedValue(geminiReply({ safety: "blocked" }));
     const response = await POST(recommendationRequest("bored at my desk"));
-    expect(await response.json()).toEqual({ safety: "review", route: "support" });
+    expect(await response.json()).toEqual({ safety: "review", route: "support", categories: ["suicide"] });
   });
 });

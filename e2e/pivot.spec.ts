@@ -98,17 +98,20 @@ test("crisis language shows the support card instead of a habit suggestion", asy
   await expect(page.getByText(/call or text 988 \(Suicide & Crisis Lifeline\) any time/)).toBeVisible();
   await expect(page.locator(".crisis-card").getByRole("link", { name: "988", exact: true })).toHaveAttribute("href", "tel:988");
   await expect(page.getByRole("link", { name: /Call 988/ })).toHaveAttribute("href", "tel:988");
-  await expect(page.locator(".crisis-card").getByRole("link", { name: "findahelpline.com" })).toHaveAttribute("href", "https://findahelpline.com");
+  await expect(page.locator(".resource-notes").getByRole("link", { name: "findahelpline.com" })).toHaveAttribute("href", "https://findahelpline.com");
   await expect(page.getByRole("link", { name: "Text 988" })).toHaveAttribute("href", "sms:988");
   await expect(page.getByRole("link", { name: "chat online" })).toHaveAttribute("href", "https://988lifeline.org/chat/");
-  await expect(page.getByText("If you are in immediate danger, call your local emergency number (911 in the US).")).toBeVisible();
+  await expect(page.getByText("If you or someone else is in immediate danger, call your local emergency number (911 in the US).")).toBeVisible();
+  await expect(page.getByText("Text HOME to 741741", { exact: true }).first()).toBeVisible();
+  await expect(page.getByRole("link", { name: "Text HOME to 741741" })).toHaveAttribute("href", "sms:741741?&body=HOME");
+  await expect(page.getByText(/These are US numbers/)).toBeVisible();
   await page.getByRole("button", { name: "Back to Pivot" }).click();
   await expect(page.getByRole("heading", { name: "Ready when you are." })).toBeVisible();
   await page.getByRole("button", { name: /I’m having an urge/ }).click();
   await expect(page.getByLabel(/Anything else on your mind/)).toHaveValue("");
 });
 
-for (const note of ["I want to die", "im feeling sucidal", "kms", "I can't go on anymore", "took too many pills"]) {
+for (const note of ["I want to die", "im feeling sucidal", "kms", "I can't go on anymore", "took too many pills", "im so tired of being alive", "i want to k1ll myself", "nobody would miss me if i was gone"]) {
   test(`crisis phrasing ${JSON.stringify(note)} shows crisis resources without waiting for the server`, async ({ page }) => {
     await createBasicPivot(page);
     const recommendationRequests: string[] = [];
@@ -193,12 +196,65 @@ test("the safety footer is reachable above the phone tab bar", async ({ page }) 
   expect(box && tabbar && box.y + box.height <= tabbar.y).toBe(true);
 });
 
-test("unsupported clinical context routes to specialized support", async ({ page }) => {
+test("unsupported clinical context routes to specialized support with real resources", async ({ page }) => {
   await createBasicPivot(page);
   await page.getByRole("button", { name: /I’m having an urge/ }).click();
   await page.getByLabel(/Anything else on your mind/).fill("I need help with an eating disorder");
   await page.getByRole("button", { name: /Show me a next step/ }).click();
   await expect(page.getByRole("heading", { name: "This needs specialized support." })).toBeVisible();
+  await expect(page.getByText(/healthcare professional/)).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Call 988" })).toHaveAttribute("href", "tel:988");
+  await expect(page.getByRole("link", { name: "Text HOME to 741741" })).toBeVisible();
+  await expect(page.getByText(/These are US numbers/)).toBeVisible();
+});
+
+test("specialized support for substance use lists the SAMHSA helpline", async ({ page }) => {
+  await createBasicPivot(page);
+  await page.getByRole("button", { name: /I’m having an urge/ }).click();
+  await page.getByLabel(/Anything else on your mind/).fill("I relapsed and used heroin again");
+  await page.getByRole("button", { name: /Show me a next step/ }).click();
+  await expect(page.getByRole("heading", { name: "This needs specialized support." })).toBeVisible();
+  await expect(page.getByText("Call 1-800-662-4357", { exact: true }).first()).toBeVisible();
+  await expect(page.getByRole("link", { name: "Call 1-800-662-4357" })).toHaveAttribute("href", "tel:+18006624357");
+});
+
+for (const [note, name, number, href] of [
+  ["i'm in an abusive relationship", "National Domestic Violence Hotline", "Call 1-800-799-7233", "tel:+18007997233"],
+  ["domestic violence at home", "National Domestic Violence Hotline", "Call 1-800-799-7233", "tel:+18007997233"],
+  ["I was sexually assaulted", "RAINN National Sexual Assault Hotline", "Call 1-800-656-4673", "tel:+18006564673"],
+  ["I took a whole bottle of tylenol", "Poison Control", "Call 1-800-222-1222", "tel:+18002221222"],
+]) {
+  test(`crisis resources for ${JSON.stringify(note)} lead with ${name}`, async ({ page }) => {
+    await createBasicPivot(page);
+    await page.getByRole("button", { name: /I’m having an urge/ }).click();
+    await page.getByLabel(/Anything else on your mind/).fill(note);
+    await page.getByRole("button", { name: /Show me a next step/ }).click();
+    await expect(page.getByRole("heading", { name: "This sounds heavier than what Pivot is built for." })).toBeVisible();
+    await expect(page.getByText(name, { exact: true })).toBeVisible();
+    await expect(page.getByRole("link", { name: number })).toHaveAttribute("href", href);
+    await expect(page.getByRole("link", { name: /Call 988/ })).toHaveAttribute("href", "tel:988");
+    if (note.includes("abusive")) await expect(page.getByRole("link", { name: "Text START to 88788" })).toHaveAttribute("href", "sms:88788?&body=START");
+  });
+}
+
+test("the crisis lines page works without JavaScript", async ({ browser }) => {
+  const context = await browser.newContext({ javaScriptEnabled: false });
+  const page = await context.newPage();
+  await page.goto("/help");
+  for (const [number, href] of [["Call 988", "tel:988"], ["Text HOME to 741741", "sms:741741?&body=HOME"], ["Call 1-800-799-7233", "tel:+18007997233"], ["Call 1-800-656-4673", "tel:+18006564673"], ["Call 1-800-222-1222", "tel:+18002221222"]]) {
+    await expect(page.getByRole("link", { name: number })).toHaveAttribute("href", href);
+  }
+  await expect(page.getByText(/These are US numbers/)).toBeVisible();
+  await page.goto("/");
+  await expect(page.locator("footer.safety-footer").getByRole("link", { name: "All crisis lines" })).toHaveAttribute("href", "/help");
+  await context.close();
+});
+
+test("not-found and offline pages keep the crisis line", async ({ page }) => {
+  for (const path of ["/no-such-page", "/offline"]) {
+    await page.goto(path);
+    await expect(page.locator("footer.safety-footer").getByRole("link", { name: "988" })).toHaveAttribute("href", "tel:988");
+  }
 });
 
 test("active intervention survives refresh", async ({ page }) => {

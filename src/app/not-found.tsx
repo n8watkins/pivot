@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SafetyFooter } from "@/components/pivot/legal-page";
 
 export default function NotFound() {
   return (
@@ -9,6 +10,7 @@ export default function NotFound() {
         <p className="lede">Return to your pause space or open Settings to manage your pivots.</p>
         <Link className="primary-button full" href="/">Return home</Link>
         <Link className="quiet-button" href="/settings">Open Settings</Link>
+        <SafetyFooter />
       </div>
     </main>
   );

@@ -51,6 +51,7 @@ export function SafetyFooter() {
       <p>
         Pivot is a habit tool, not medical care, therapy, or an emergency service.
         In crisis? In the US, call or text <a href="tel:988">988</a>; elsewhere, find a helpline at <a href="https://findahelpline.com" target="_blank" rel="noopener noreferrer">findahelpline.com</a>.
+        {" "}<a href="/help">All crisis lines</a>.
       </p>
       <LegalLinks />
     </footer>

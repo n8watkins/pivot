@@ -1,8 +1,8 @@
-const CACHE_VERSION = "pivot-shell-v1";
+const CACHE_VERSION = "pivot-shell-v2";
 const SHELL_CACHE = `${CACHE_VERSION}-pages`;
 const ASSET_CACHE = `${CACHE_VERSION}-assets`;
 const OFFLINE_URL = "/offline";
-const SHELL_PATHS = ["/", "/onboarding", "/settings", OFFLINE_URL, "/manifest.webmanifest", "/icons/pivot-192.png", "/icons/pivot-512.png"];
+const SHELL_PATHS = ["/", "/onboarding", "/settings", "/help", OFFLINE_URL, "/manifest.webmanifest", "/icons/pivot-192.png", "/icons/pivot-512.png"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(Promise.all([

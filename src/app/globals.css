@@ -1041,6 +1041,88 @@ h1 {
   font-size: 14px;
 }
 
+.resource-list {
+  display: grid;
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.resource-list:empty {
+  display: none;
+}
+
+.resource-card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--card);
+  box-shadow: var(--shadow-sm);
+  padding: 18px 20px;
+}
+
+.resource-card strong {
+  font-size: 15px;
+}
+
+.resource-card p {
+  margin: 6px 0 0;
+  color: var(--ink-soft);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.resource-card .resource-contact {
+  color: var(--ink);
+  font-size: 16px;
+  font-weight: 650;
+  user-select: all;
+  -webkit-user-select: all;
+}
+
+.resource-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.resource-actions .secondary-button {
+  text-decoration: none;
+  width: auto;
+  min-height: 40px;
+  padding: 8px 14px;
+  font-size: 14px;
+}
+
+.resource-intro {
+  margin: 20px 0 0;
+  color: var(--ink-soft);
+  font-size: 15px;
+}
+
+.resource-notes {
+  display: grid;
+  gap: 8px;
+  margin: 8px 0 20px;
+  color: var(--ink-soft);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.resource-notes p {
+  margin: 0;
+}
+
+.resource-notes a {
+  color: var(--deep-sage);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.resource-notes .crisis-emergency {
+  color: var(--ink);
+}
+
 /* ============================================================
    Active screen (orbit timer)
    ============================================================ */

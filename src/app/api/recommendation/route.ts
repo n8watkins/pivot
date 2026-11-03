@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { deterministicFallback, hasHighRiskContext, hasUnsupportedContext, interpretGeminiPayload, type ReplacementOption } from "@/lib/recommendation";
+import { deterministicFallback, interpretGeminiPayload, type ReplacementOption } from "@/lib/recommendation";
+import { assessSafety, type CrisisCategory } from "@/lib/crisis";
 import { ensureSession, getDatabase } from "@/lib/session";
 import { getSnapshot } from "@/lib/domain";
 import { recommendationInputSchema } from "@/lib/schemas";
@@ -7,7 +8,7 @@ import { GEMINI_ENDPOINT, buildGeminiRequest } from "@/lib/gemini";
 import { isRateLimited, rateLimitResponse } from "@/lib/rate-limit";
 import { networkRateLimitKey, rejectCrossOriginMutation } from "@/lib/request-security";
 
-function supportResponse() { return NextResponse.json({ safety: "review", route: "support" }, { status: 200 }); }
+function supportResponse(categories: CrisisCategory[] = ["suicide"]) { return NextResponse.json({ safety: "review", route: "support", categories }, { status: 200 }); }
 
 export async function POST(request: Request) {
   const rejected = rejectCrossOriginMutation(request);
@@ -18,8 +19,9 @@ export async function POST(request: Request) {
   if (!parsedInput.success) return NextResponse.json({ error: "Invalid recommendation input" }, { status: 400 });
   // Safety routing comes first and does not depend on stored data or rate limits.
   const context = parsedInput.data.context;
-  if (hasHighRiskContext(context)) return supportResponse();
-  if (hasUnsupportedContext(context)) return NextResponse.json({ safety: "review", route: "specialized" }, { status: 200 });
+  const assessment = assessSafety(context);
+  if (assessment.route === "crisis") return supportResponse(assessment.categories);
+  if (assessment.route === "specialized") return NextResponse.json({ safety: "review", route: "specialized", categories: assessment.categories }, { status: 200 });
   // Rate limits apply to recommendations only, never to showing crisis resources.
   const database = getDatabase();
   if (await isRateLimited(`recommendation:${sessionId}`, 20, { database })) return rateLimitResponse();
