@@ -9,8 +9,8 @@
   "compatibility_date": "2026-11-01",
   // nodejs_compat is required by @opennextjs/cloudflare, and web-push uses node:crypto and node:https.
   "compatibility_flags": ["nodejs_compat"],
-  // No custom domain yet: the app is served at pivot.<account>.workers.dev
-  // until the owner picks one (see README "Hosting").
+  // Served at https://pivot.n8builds.dev (a custom domain attached to this
+  // Worker in the dashboard) and at pivot.<account>.workers.dev.
   "workers_dev": true,
   "preview_urls": false,
   "assets": {
@@ -26,6 +26,8 @@
     "crons": ["7 * * * *"]
   },
   "vars": {
+    // The canonical origin: Auth.js builds its callback URLs from it.
+    "AUTH_URL": "https://pivot.n8builds.dev",
     "WEB_PUSH_SUBJECT": "mailto:nathancwatkins23@gmail.com"
   }
   // Secrets are set with `wrangler secret put <NAME>`, never in this file.

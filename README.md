@@ -138,12 +138,8 @@ npx wrangler secret put WEB_PUSH_VAPID_PRIVATE_KEY
 npx wrangler secret put CRON_SECRET
 ```
 
-On Cloudflare, an hourly Cron Trigger (`7 * * * *` in `wrangler.jsonc`) calls `/api/cron/notifications` in-process with `CRON_SECRET` as a bearer token, and the route rejects every request without an exact match.
+An hourly Cron Trigger (`7 * * * *` in `wrangler.jsonc`) calls `/api/cron/notifications` in-process with `CRON_SECRET` as a bearer token, and the route rejects every request without an exact match.
 Without `CRON_SECRET` the trigger does nothing.
-
-While production is still on Vercel, the `Notification check-ins` GitHub Actions workflow calls the Vercel deployment hourly instead, because the Vercel Hobby plan only allows daily crons.
-It runs only once the `CRON_SECRET` repository secret matches the Vercel production value, and `PIVOT_URL` (a repository variable) names the deployment it calls.
-Delete that workflow once production moves to the Worker: the Cron Trigger replaces it.
 
 ## Privacy and safety
 
@@ -197,9 +193,8 @@ To run the whole suite on the Workers runtime locally, start a libSQL server wit
 
 ## Hosting on Cloudflare Workers
 
-Pivot runs on Cloudflare Workers, built with [`@opennextjs/cloudflare`](https://opennext.js.org/cloudflare), at https://pivot.nathancwatkins23.workers.dev until a custom domain is chosen.
-The Vercel deployment at https://pivot-lilac-nu.vercel.app keeps serving production until that cutover.
-[`wrangler.jsonc`](wrangler.jsonc) holds the Worker config: the hourly Cron Trigger and the plain variables.
+Pivot runs on Cloudflare Workers, built with [`@opennextjs/cloudflare`](https://opennext.js.org/cloudflare), at https://pivot.n8builds.dev.
+[`wrangler.jsonc`](wrangler.jsonc) holds the Worker config: the hourly Cron Trigger and the plain variables, including `AUTH_URL`.
 [`worker/index.ts`](worker/index.ts) is the entry point; it serves the Next.js app and adds the Cron Trigger handler from [`worker/handlers.ts`](worker/handlers.ts).
 [`.dev.vars.example`](.dev.vars.example) lists every secret.
 
@@ -213,13 +208,13 @@ npm run cf-typegen       # regenerate cloudflare-env.d.ts after changing wrangle
 Keep `.env*` files with secrets out of the working tree when building for a deploy: OpenNext copies Next.js `.env` files into the Worker bundle.
 The [`Deploy`](.github/workflows/deploy.yml) workflow deploys `main` after CI passes on it, once the `CLOUDFLARE_API_TOKEN` repository secret exists; until then it skips.
 Only `main` deploys, so `release/*` branches from the release train never do (on Vercel, `vercel.json` turns them off).
-Auth.js trusts the request host, so sign-in works on whichever origin serves the app; register `<origin>/api/auth/callback/github` as the GitHub OAuth app's callback URL.
+Auth.js builds its URLs from `AUTH_URL`, so register `https://pivot.n8builds.dev/api/auth/callback/github` as the GitHub OAuth app's callback URL.
 
 ## Deploy
 
 Create a Turso database and set `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` as Worker secrets before the first production request.
 Migrations run automatically on the first request after a deploy; `npm run db:migrate` runs them ahead of time.
-Set the four Web Push variables described above, then the `CRON_SECRET` repository secret, to turn on check-ins.
+Set the Web Push secrets and `CRON_SECRET` described above to turn on check-ins.
 Leave `ENABLE_GEMINI_RECOMMENDATIONS=false` until model-backed recommendations are intentionally released.
 Add `GEMINI_API_KEY` and enable the release flag together when that later capability is ready.
 Add all three Auth.js and GitHub variables together when GitHub sign-in is ready.
