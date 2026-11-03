@@ -16,6 +16,7 @@ export default function PrivacyPage() {
           <li>The pivots you create, their actions, and the tags you add.</li>
           <li>Each moment you check in: the pivot, the action you chose, the tag and intensity you picked, the suggestion shown, and how it went.</li>
           <li>If you connect GitHub, your GitHub username, account ID, and avatar link, so your data can follow you to another device.</li>
+          <li>If you turn on check-in reminders, how often you want them, your timezone, and the push address your browser gives Pivot to deliver them.</li>
         </ul>
       </LegalSection>
       <LegalSection title="What Pivot does not store">
@@ -26,7 +27,7 @@ export default function PrivacyPage() {
         <p>Before anything is sent, Pivot checks the note on your device for crisis language. If it finds any, it shows crisis resources instead and does not send the note.</p>
       </LegalSection>
       <LegalSection title="Who else handles data">
-        <p>No ads, no tracking or analytics scripts, and no selling or sharing your data. Pivot is hosted on Vercel and stores data with Turso, who process it only to run the app. Like most websites, the hosting provider keeps short-lived request logs (such as IP address, browser, and the page requested) for security and debugging. If you connect GitHub, GitHub handles that sign-in.</p>
+        <p>No ads, no tracking or analytics scripts, and no selling or sharing your data. Pivot runs on Cloudflare Workers and stores data in a Turso database, and both process it only to run the app. Like most websites, Cloudflare keeps short-lived request logs (such as IP address, browser, and the page requested) for security and debugging. If you connect GitHub, GitHub handles that sign-in. If you turn on check-in reminders, they are delivered through your browser&apos;s push service (such as Google for Chrome or Mozilla for Firefox), which carries the reminder encrypted and cannot read it.</p>
       </LegalSection>
       <LegalSection title="How long data is kept">
         <ul>
