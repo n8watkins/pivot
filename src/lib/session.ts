@@ -5,8 +5,8 @@ import { migrate } from "./migrations";
 import { auth, isAuthConfigured } from "@/auth";
 import { linkGitHubAccount } from "./account";
 import { getRuntimeCapabilities } from "./config";
+import { SESSION_COOKIE, sessionCookieOptions } from "./session-cookie";
 
-export const SESSION_COOKIE = "pivot_session";
 let client: Client | null = null;
 let initialization: Promise<void> | null = null;
 const memorySessions = new Map<string, { id: string; createdAt: string }>();
@@ -32,7 +32,7 @@ export async function ensureSession() {
   const cookieStore = await cookies();
   const existing = cookieStore.get(SESSION_COOKIE)?.value;
   const id = existing ?? randomUUID();
-  if (!existing) cookieStore.set(SESSION_COOKIE, id, { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production" && process.env.COOKIE_SECURE !== "false", maxAge: 60 * 60 * 24 * 365, path: "/" });
+  if (!existing) cookieStore.set(SESSION_COOKIE, id, sessionCookieOptions());
   const db = getDatabase();
   if (db) {
     await initializeDatabase();
@@ -45,7 +45,7 @@ export async function ensureSession() {
   const login = accountSession.user.githubLogin || accountSession.user.name || "GitHub user";
   const avatar = accountSession.user.image ?? null;
   const linked = await linkGitHubAccount(db, id, { id: githubId, login, avatarUrl: avatar });
-  if (linked.sessionId !== id) cookieStore.set(SESSION_COOKIE, linked.sessionId, { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production" && process.env.COOKIE_SECURE !== "false", maxAge: 60 * 60 * 24 * 365, path: "/" });
+  if (linked.sessionId !== id) cookieStore.set(SESSION_COOKIE, linked.sessionId, sessionCookieOptions());
   return linked.sessionId;
 }
 
@@ -58,7 +58,7 @@ export async function leaveAccountSession() {
     await initializeDatabase();
     await db.execute({ sql: "INSERT INTO anonymous_sessions (id, created_at) VALUES (?, ?)", args: [id, now] });
   } else memorySessions.set(id, { id, createdAt: now });
-  cookieStore.set(SESSION_COOKIE, id, { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production" && process.env.COOKIE_SECURE !== "false", maxAge: 60 * 60 * 24 * 365, path: "/" });
+  cookieStore.set(SESSION_COOKIE, id, sessionCookieOptions());
 }
 
 export async function recordEvent(type: string, payload: Record<string, unknown>) {
