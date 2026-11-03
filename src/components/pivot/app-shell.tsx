@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
+import { SafetyFooter } from "@/components/pivot/legal-page";
 import { Icon, Logo, type IconName } from "@/components/pivot/ui";
 
 export type PivotSummary = { id: string; goal: string };
@@ -135,7 +136,7 @@ export function AppShell({
               <Link className="pivot-pill pivot-pill-add" href={newPivotHref}><Icon name="plus" size={14} /> New</Link>
             </div>
           )}
-          <div className="shell-content">{children}</div>
+          <div className="shell-content">{children}<SafetyFooter /></div>
         </div>
 
         {rightRail && <aside className="shell-rail">{rightRail}</aside>}

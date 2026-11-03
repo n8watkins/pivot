@@ -54,9 +54,9 @@ test("crisis language shows the support card instead of a habit suggestion", asy
   await expect(page.getByRole("heading", { name: "This sounds heavier than what Pivot is built for." })).toBeVisible();
   await expect(page.getByRole("heading", { name: /Try this for/ })).toHaveCount(0);
   await expect(page.getByText(/call or text 988 \(Suicide & Crisis Lifeline\) any time/)).toBeVisible();
-  await expect(page.getByRole("link", { name: "988", exact: true })).toHaveAttribute("href", "tel:988");
+  await expect(page.locator(".crisis-card").getByRole("link", { name: "988", exact: true })).toHaveAttribute("href", "tel:988");
   await expect(page.getByRole("link", { name: /Call 988/ })).toHaveAttribute("href", "tel:988");
-  await expect(page.getByRole("link", { name: "findahelpline.com" })).toHaveAttribute("href", "https://findahelpline.com");
+  await expect(page.locator(".crisis-card").getByRole("link", { name: "findahelpline.com" })).toHaveAttribute("href", "https://findahelpline.com");
   await expect(page.getByRole("link", { name: "Text 988" })).toHaveAttribute("href", "sms:988");
   await expect(page.getByRole("link", { name: "chat online" })).toHaveAttribute("href", "https://988lifeline.org/chat/");
   await expect(page.getByText("If you are in immediate danger, call your local emergency number (911 in the US).")).toBeVisible();
@@ -117,6 +117,34 @@ test("privacy and terms pages are linked from settings", async ({ page }) => {
   await page.getByRole("navigation", { name: "Legal" }).getByRole("link", { name: "Terms" }).click();
   await expect(page.getByRole("heading", { name: "The short version." })).toBeVisible();
   await expect(page.getByText(/not medical or mental-health treatment/)).toBeVisible();
+});
+
+test("the first screen says Pivot is not care or an emergency service and links the legal pages", async ({ page }) => {
+  await page.goto("/");
+  const footer = page.locator("footer.safety-footer");
+  await expect(footer).toContainText("not medical care, therapy, or an emergency service");
+  await expect(footer.getByRole("link", { name: "988" })).toHaveAttribute("href", "tel:988");
+  await footer.getByRole("link", { name: "Privacy" }).click();
+  await expect(page.getByRole("heading", { name: "Your data, plainly." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "How long data is kept" })).toBeVisible();
+  await expect(page.getByText(/plain-language draft/)).toBeVisible();
+  await page.locator("footer.safety-footer").getByRole("link", { name: "Terms" }).click();
+  await expect(page.getByText("You must be 18 or older to use Pivot.")).toBeVisible();
+});
+
+test("onboarding shows the safety footer", async ({ page }) => {
+  await page.goto("/onboarding");
+  await expect(page.locator("footer.safety-footer")).toContainText("not medical care, therapy, or an emergency service");
+});
+
+test("the safety footer is reachable above the phone tab bar", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+  const footer = page.locator("footer.safety-footer");
+  await footer.scrollIntoViewIfNeeded();
+  const box = await footer.boundingBox();
+  const tabbar = await page.getByRole("navigation", { name: "Mobile navigation" }).boundingBox();
+  expect(box && tabbar && box.y + box.height <= tabbar.y).toBe(true);
 });
 
 test("unsupported clinical context routes to specialized support", async ({ page }) => {

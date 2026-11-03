@@ -16,10 +16,10 @@ export function LegalPage({ eyebrow, title, lede, children }: { eyebrow: string;
           <p className="eyebrow">{eyebrow}</p>
           <h1>{title}</h1>
           <p className="lede">{lede}</p>
-          <p className="legal-updated">Last updated {LEGAL_UPDATED}</p>
+          <p className="legal-updated">Last updated {LEGAL_UPDATED}. This is a plain-language draft and may change after review.</p>
         </header>
         <div className="legal-body">{children}</div>
-        <LegalLinks />
+        <SafetyFooter />
       </div>
     </main>
   );
@@ -41,5 +41,18 @@ export function LegalLinks() {
       <span aria-hidden="true">·</span>
       <Link href="/terms">Terms</Link>
     </nav>
+  );
+}
+
+/** Shown on every screen: Pivot is not care or an emergency service, where to get help, and the legal links. */
+export function SafetyFooter() {
+  return (
+    <footer className="safety-footer">
+      <p>
+        Pivot is a habit tool, not medical care, therapy, or an emergency service.
+        In crisis? In the US, call or text <a href="tel:988">988</a>; elsewhere, find a helpline at <a href="https://findahelpline.com" target="_blank" rel="noopener noreferrer">findahelpline.com</a>.
+      </p>
+      <LegalLinks />
+    </footer>
   );
 }

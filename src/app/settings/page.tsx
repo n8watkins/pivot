@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { signIn, signOut } from "next-auth/react";
 import { AppShell, type UtilityNavItem } from "@/components/pivot/app-shell";
-import { LegalLinks } from "@/components/pivot/legal-page";
 import { Icon } from "@/components/pivot/ui";
 
 type Pivot = { id: string; goal: string; replacements: { id: string; name: string }[] };
@@ -101,7 +100,6 @@ export default function SettingsPage() {
           </aside>
         </div>
         <p className="privacy-note"><span className="privacy-ic"><Icon name="shield" size={15} /></span> Pivot does not require an account to be useful.</p>
-        <LegalLinks />
       </div>
     </AppShell>
   );
