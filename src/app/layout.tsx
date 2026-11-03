@@ -21,11 +21,12 @@ export const metadata: Metadata = {
   formatDetection: { telephone: false },
   appleWebApp: { capable: true, statusBarStyle: "default", title: "Pivot" },
   icons: {
+    // The SVG switches between a sage and a paper p with the tab bar's color scheme; the ICO is the fallback.
     icon: [
-      { url: "/icons/pivot-192.png", sizes: "192x192", type: "image/png" },
-      { url: "/icons/pivot-512.png", sizes: "512x512", type: "image/png" },
+      { url: "/favicon.ico", sizes: "16x16 32x32 48x48" },
+      { url: "/icon.svg", type: "image/svg+xml" },
     ],
-    apple: [{ url: "/icons/pivot-192.png", sizes: "192x192", type: "image/png" }],
+    apple: [{ url: "/apple-icon.png", sizes: "180x180", type: "image/png" }],
   },
 };
 

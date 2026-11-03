@@ -16,14 +16,30 @@ test("manifest exposes installable Android metadata and icons", async ({ request
     theme_color: "#4d6d5a",
   });
   expect(manifest.icons).toEqual(expect.arrayContaining([
-    expect.objectContaining({ src: "/icons/pivot-192.png", sizes: "192x192", purpose: "maskable" }),
-    expect.objectContaining({ src: "/icons/pivot-512.png", sizes: "512x512", purpose: "maskable" }),
+    expect.objectContaining({ src: "/icons/pivot-maskable-192.png", sizes: "192x192", purpose: "maskable" }),
+    expect.objectContaining({ src: "/icons/pivot-maskable-512.png", sizes: "512x512", purpose: "maskable" }),
   ]));
-  for (const path of ["/icons/pivot-192.png", "/icons/pivot-512.png"]) {
+  for (const path of ["/icons/pivot-192.png", "/icons/pivot-512.png", "/icons/pivot-maskable-192.png", "/icons/pivot-maskable-512.png", "/apple-icon.png"]) {
     const icon = await request.get(path);
     expect(icon.ok()).toBeTruthy();
     expect(icon.headers()["content-type"]).toBe("image/png");
   }
+});
+
+test("pages link the theme-aware SVG favicon, an ICO fallback and the Apple touch icon", async ({ page, request }) => {
+  await page.goto("/");
+  await expect(page.locator('link[rel="icon"][type="image/svg+xml"]')).toHaveAttribute("href", /\/icon\.svg/);
+  await expect(page.locator('link[rel="icon"][href*="favicon.ico"]')).toHaveCount(1);
+  await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveAttribute("href", /\/apple-icon\.png/);
+  const svg = await (await request.get("/icon.svg")).text();
+  expect(svg).toContain("prefers-color-scheme: dark");
+  expect((await request.get("/favicon.ico")).ok()).toBeTruthy();
+});
+
+test("the logo is labelled once for screen readers", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.locator("footer.safety-footer").getByRole("img", { name: "Pivot" })).toBeVisible();
+  await expect(page.locator(".brand svg.logo-mark").first()).toHaveAttribute("aria-hidden", "true");
 });
 
 test("settings offers the browser install prompt and manual Chrome instructions", async ({ page }) => {

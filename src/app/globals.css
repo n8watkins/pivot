@@ -19,6 +19,8 @@
   --sage-tint-2: #eef4ec;
   --sage-track: #e4ebe2;
   --coral-tint: #fff1ec;
+  --logo-stroke: var(--deep-sage);
+  --logo-arrow: var(--coral);
 
   --shadow-sm: 0 1px 2px rgba(34, 51, 26, .05);
   --shadow-md: 0 14px 30px -18px rgba(45, 63, 49, .24);
@@ -298,14 +300,19 @@ textarea {
 }
 
 .logo-mark {
-  display: grid;
-  width: 30px;
-  height: 30px;
-  place-items: center;
-  border-radius: 10px;
-  background: var(--deep-sage);
-  color: #fff;
-  box-shadow: var(--shadow-sm);
+  display: block;
+  flex: none;
+}
+
+/* Pivot's surfaces are light; a dark surface sets this class so the logo switches to paper. */
+.on-dark {
+  --logo-stroke: var(--paper);
+}
+
+.safety-footer .footer-mark {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 10px;
 }
 
 .focus-mode-label {
