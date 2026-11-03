@@ -9,19 +9,21 @@ function supportResponse() { return NextResponse.json({ safety: "review", route:
 
 export async function POST(request: Request) {
   const sessionId = await ensureSession();
-  if (isRateLimited(`recommendation:${sessionId}`, 20)) return rateLimitResponse();
   const body = await request.json().catch(() => ({}));
   const parsedInput = recommendationInputSchema.safeParse(body);
   if (!parsedInput.success) return NextResponse.json({ error: "Invalid recommendation input" }, { status: 400 });
+  // Safety routing comes first and does not depend on stored data or rate limits.
+  const context = parsedInput.data.context;
+  if (hasHighRiskContext(context)) return supportResponse();
+  if (hasUnsupportedContext(context)) return NextResponse.json({ safety: "review", route: "specialized" }, { status: 200 });
+  // Rate limits apply to recommendations only, never to showing crisis resources.
+  if (isRateLimited(`recommendation:${sessionId}`, 20)) return rateLimitResponse();
   const snapshot = await getSnapshot();
   if (getDatabase() && snapshot.replacements.length === 0) return NextResponse.json({ error: "Complete setup before requesting a recommendation" }, { status: 409 });
   const pivot = snapshot.pivots.find((item) => item.id === parsedInput.data.pivotId);
   if (getDatabase() && !pivot) return NextResponse.json({ error: "Pivot not found" }, { status: 404 });
   const replacements = (pivot?.replacements ?? parsedInput.data.replacements) as ReplacementOption[];
   const history = snapshot.history.filter((event) => event.pivotId === parsedInput.data.pivotId).map((event) => ({ replacementId: event.replacementId, helpful: event.helpful }));
-  const context = parsedInput.data.context;
-  if (hasHighRiskContext(context)) return supportResponse();
-  if (hasUnsupportedContext(context)) return NextResponse.json({ safety: "review", route: "specialized" }, { status: 200 });
   let source: "gemini" | "fallback" = "fallback";
   let recommendation = deterministicFallback(replacements, history);
   const apiKey = process.env.GEMINI_API_KEY;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { deterministicFallback, hasCrisisLanguage, hasHighRiskContext, hasUnsupportedContext, interpretGeminiPayload, parseRecommendation, rankReplacements } from "./recommendation";
+import { deterministicFallback, hasHighRiskContext, hasUnsupportedContext, interpretGeminiPayload, parseRecommendation, rankReplacements } from "./recommendation";
 import { fallbackFirstStep } from "./replacement-copy";
 
 const options = [
@@ -40,52 +40,6 @@ describe("recommendation safety and fallback", () => {
   });
 });
 
-describe("crisis language check", () => {
-  it.each([
-    "I feel suicidal",
-    "Suicidal thoughts again tonight",
-    "thinking about suicide",
-    "I want to die",
-    "i just wanna die",
-    "Honestly I want to be dead",
-    "I want to kill myself",
-    "KILL MYSELF",
-    "thinking about killing myself",
-    "I want to end my life",
-    "I might take my own life",
-    "I want to end it all",
-    "I want to hurt myself",
-    "I keep cutting myself",
-    "self-harm urges",
-    "I wish I was dead",
-    "everyone would be better off dead without me",
-    "there is no reason to live",
-    "I don\u2019t want to live anymore",
-    "I don't want to be here anymore",
-  ])("flags %j", (note) => {
-    expect(hasCrisisLanguage(note)).toBe(true);
-    expect(hasHighRiskContext(note)).toBe(true);
-  });
-
-  it.each([
-    "I'm dying to try that new game",
-    "this commute is killing me",
-    "my feet are killing me",
-    "I'm bored to death",
-    "this cake is to die for",
-    "I'd die for a nap",
-    "I need to cut myself off from my phone",
-    "cut myself some slack",
-    "end my scrolling streak",
-    "I want to end this habit",
-    "I keep checking my email",
-    "Tired",
-    "",
-  ])("does not flag %j", (note) => {
-    expect(hasCrisisLanguage(note)).toBe(false);
-  });
-});
-
 describe("Gemini safety signal", () => {
   const geminiText = (value: unknown) => ({ candidates: [{ content: { parts: [{ text: JSON.stringify(value) }] } }] });
   const safe = { replacementId: "breathe", reason: "Quiet fit.", firstStep: "Sit down.", alternatives: ["walk"], safety: "safe" };
@@ -99,9 +53,17 @@ describe("Gemini safety signal", () => {
     expect(interpretGeminiPayload(geminiText({ safety }), options)).toEqual({ kind: "support" });
   });
 
+  it.each(["REVIEW", " Blocked ", "unsafe", "", null, 0])("routes to support for any non-safe safety value %j", (safety) => {
+    expect(interpretGeminiPayload(geminiText({ ...safe, safety }), options)).toEqual({ kind: "support" });
+  });
+
   it("routes to support when Gemini blocks the prompt or stops for safety", () => {
     expect(interpretGeminiPayload({ promptFeedback: { blockReason: "SAFETY" } }, options)).toEqual({ kind: "support" });
-    expect(interpretGeminiPayload({ candidates: [{ finishReason: "SAFETY" }] }, options)).toEqual({ kind: "support" });
+    expect(interpretGeminiPayload({ promptFeedback: { safetyRatings: [{ blocked: true }] } }, options)).toEqual({ kind: "support" });
+    for (const finishReason of ["SAFETY", "BLOCKLIST", "PROHIBITED_CONTENT", "SPII"]) {
+      expect(interpretGeminiPayload({ candidates: [{ finishReason }] }, options)).toEqual({ kind: "support" });
+    }
+    expect(interpretGeminiPayload({ candidates: [{ finishReason: "STOP", safetyRatings: [{ blocked: true }], content: { parts: [{ text: JSON.stringify(safe) }] } }] }, options)).toEqual({ kind: "support" });
   });
 
   it("falls back quietly on malformed or unapproved output", () => {

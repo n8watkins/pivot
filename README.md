@@ -16,7 +16,8 @@ It supports any everyday habit, keeps each habit and its replacement actions in 
 - Pivot-aware History with event deletion and preserved labels after pivot deletion.
 - JSON data export and complete account or anonymous-session deletion.
 - Optional GitHub sign-in that upgrades and merges an existing anonymous session.
-- Crisis routing before normal recommendations: clear self-harm or suicide language, or a Gemini safety flag, shows 988 and findahelpline.com instead of a habit suggestion.
+- Crisis routing before normal recommendations: suicide, self-harm, wanting to die, overdose, or danger-to-others language (typos and slang included), or any Gemini safety signal, shows call/text/chat 988, findahelpline.com, and local emergency numbers instead of a habit suggestion.
+  The check runs on the device first and again on the server, so it never depends on the network.
 - Unsupported clinical-category routing to specialized support.
 - Short privacy and terms pages at `/privacy` and `/terms`, linked from onboarding, Settings, and the note field.
 
@@ -112,6 +113,8 @@ One-time context notes are not stored.
 High-risk language routes away from habit recommendations and directs users in the United States or Canada to call or text 988.
 Unsupported clinical categories route to specialized professional support.
 The safety matcher is a conservative product boundary, not a clinical assessment system.
+It lives in `src/lib/crisis.ts` and errs toward showing resources: negations such as "I'm not suicidal" still show them, and only clear everyday idioms are excluded.
+Every phrase it must catch or ignore is listed in `src/lib/crisis.test.ts`, which CI runs as its own required "Crisis safety tests" check.
 
 ## Health and operations
 

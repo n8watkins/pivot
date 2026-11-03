@@ -5,7 +5,27 @@ on:
     branches: [main]
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
+  # Fast, separately required check: the crisis phrase table and Gemini safety routing.
+  # A regression here must never merge, so it runs on its own and fails loudly.
+  safety:
+    name: Crisis safety tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npx vitest run src/lib/crisis.test.ts src/lib/recommendation.test.ts
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build
+      - run: npx playwright test e2e/pivot.spec.ts --grep "crisis|high-risk|idiom|specialized"
+
   verify:
     runs-on: ubuntu-latest
     steps:

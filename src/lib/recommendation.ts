@@ -12,33 +12,7 @@ export const recommendationSchema = z.object({
 export type Recommendation = z.infer<typeof recommendationSchema>;
 export type ReplacementOption = { id: string; name: string; detail: string; duration: string };
 
-// Clear self-harm or suicide intent. Each pattern needs a first-person or intent
-// phrasing so everyday idioms ("dying to try", "this commute is killing me") pass.
-const crisisPatterns = [
-  /\bsuicid(e|es|al|ality)\b/,
-  /\b(kill|hurt|harm|injure|end)(ing)?\s+myself\b/,
-  /\bcut(ting)?\s+myself\b(?!\s+(off|some|a\s+break|loose))/,
-  /\bself[- ]?(harm|harming|injury|injure|injuring)\b/,
-  /\b(want|wanna|wanted|ready|planning|plan|deserve)\s+(to\s+)?(die|be\s+dead)\b/,
-  /\b(wish|wishing)\s+(that\s+)?i\s+(was|were|could\s+be)\s+dead\b/,
-  /\bbetter\s+off\s+dead\b/,
-  /\b(end|ending|take|taking)\s+my\s+(own\s+)?life\b/,
-  /\b(end|ending)\s+it\s+all\b/,
-  /\bno\s+reason\s+to\s+(live|keep\s+going|go\s+on)\b/,
-  /\bdon'?t\s+want\s+to\s+(live|be\s+alive|exist|wake\s+up|be\s+here\s+any\s*more)\b/,
-];
-const otherRiskPatterns = /\b(hurt someone|overdose|abuse|illegal|weapon)\b/;
-const unsupportedPatterns = /\b(eating disorder|anorexia|bulimia|purging|detox|withdrawal|gambling addiction|substance addiction|domestic violence|psychosis|manic episode)\b/i;
-
-function normalize(input: string) { return input.toLowerCase().replace(/[\u2018\u2019\u02bc]/g, "'").replace(/\s+/g, " "); }
-
-export function hasCrisisLanguage(input: string) {
-  const text = normalize(input);
-  return crisisPatterns.some((pattern) => pattern.test(text));
-}
-
-export function hasHighRiskContext(input: string) { return hasCrisisLanguage(input) || otherRiskPatterns.test(normalize(input)); }
-export function hasUnsupportedContext(input: string) { return unsupportedPatterns.test(input); }
+export { hasCrisisLanguage, hasHighRiskContext, hasUnsupportedContext } from "./crisis";
 
 export function rankReplacements(options: ReplacementOption[], history: { replacementId: string; helpful: boolean }[] = []) {
   const scores = new Map(options.map((option, index) => [option.id, options.length - index]));
@@ -67,22 +41,32 @@ export function parseRecommendation(input: unknown, options: ReplacementOption[]
 
 export type GeminiOutcome = { kind: "support" } | { kind: "recommendation"; recommendation: Recommendation } | { kind: "none" };
 
+// Gemini finish reasons that mean the model refused or was stopped by a safety filter.
+const geminiSafetyStops = new Set(["SAFETY", "BLOCKLIST", "PROHIBITED_CONTENT", "SPII", "IMAGE_SAFETY"]);
+
+type GeminiPayload = {
+  promptFeedback?: { blockReason?: string; safetyRatings?: { blocked?: boolean }[] };
+  candidates?: { finishReason?: string; safetyRatings?: { blocked?: boolean }[]; content?: { parts?: { text?: string }[] } }[];
+} | null;
+
 /**
- * Reads a Gemini generateContent payload. Any safety signal, whether Gemini blocked the
- * prompt, stopped for safety, or flagged the context as "review" or "blocked" in its own
- * structured answer, routes to support instead of a habit suggestion.
+ * Reads a Gemini generateContent payload. Any safety signal routes to support instead of a
+ * habit suggestion: a blocked prompt, a safety finish reason, a blocked safety rating, or a
+ * structured answer whose `safety` is anything other than "safe" (including "review",
+ * "blocked", and unexpected values). It never falls back to a normal recommendation then.
  */
 export function interpretGeminiPayload(payload: unknown, options: ReplacementOption[]): GeminiOutcome {
-  const body = payload as { promptFeedback?: { blockReason?: string }; candidates?: { finishReason?: string; content?: { parts?: { text?: string }[] } }[] } | null;
-  if (body?.promptFeedback?.blockReason) return { kind: "support" };
+  const body = payload as GeminiPayload;
+  if (body?.promptFeedback?.blockReason || body?.promptFeedback?.safetyRatings?.some((rating) => rating?.blocked)) return { kind: "support" };
   const candidate = body?.candidates?.[0];
-  if (candidate?.finishReason === "SAFETY") return { kind: "support" };
+  if (candidate?.finishReason && geminiSafetyStops.has(candidate.finishReason)) return { kind: "support" };
+  if (candidate?.safetyRatings?.some((rating) => rating?.blocked)) return { kind: "support" };
   const raw = candidate?.content?.parts?.[0]?.text;
   if (!raw) return { kind: "none" };
   let parsed: unknown;
   try { parsed = JSON.parse(raw); } catch { return { kind: "none" }; }
   const safety = (parsed as { safety?: unknown } | null)?.safety;
-  if (safety === "review" || safety === "blocked") return { kind: "support" };
+  if (safety !== undefined && (typeof safety !== "string" || safety.trim().toLowerCase() !== "safe")) return { kind: "support" };
   const recommendation = parseRecommendation(parsed, options);
   return recommendation ? { kind: "recommendation", recommendation } : { kind: "none" };
 }

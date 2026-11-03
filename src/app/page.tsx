@@ -6,6 +6,7 @@ import { replacements, type Replacement } from "@/components/pivot/data";
 import { AppShell, type UtilityNavItem } from "@/components/pivot/app-shell";
 import { PivotStatsRail } from "@/components/pivot/pivot-stats-rail";
 import { Icon, Progress, ReplacementIcon } from "@/components/pivot/ui";
+import { crisisResources, hasHighRiskContext, hasUnsupportedContext } from "@/lib/crisis";
 import { fallbackFirstStep } from "@/lib/replacement-copy";
 
 type Screen = "home" | "urge" | "recommendation" | "active" | "followup" | "history" | "safety";
@@ -108,6 +109,9 @@ export default function Home() {
   const pivotCounts = useMemo(() => history.reduce<Record<string, number>>((acc, event) => { if (event.pivotId) acc[event.pivotId] = (acc[event.pivotId] ?? 0) + 1; return acc; }, {}), [history]);
   const activeRecent = useMemo(() => history.filter((event) => event.pivotId === activePivotId).slice(0, 3).map((event) => ({ id: event.id, choice: event.choice, outcome: event.outcome, date: event.date })), [history, activePivotId]);
 
+  // Each step starts at the top, so a new screen (especially crisis resources) is never shown mid-page.
+  useEffect(() => { window.scrollTo({ top: 0 }); }, [screen]);
+
   useEffect(() => {
     if (screen !== "active" || !activeStartedAt || !timerDuration) return;
     const updateTimer = () => setTimerRemaining(Math.max(0, Math.ceil((new Date(activeStartedAt).getTime() + timerDuration * 1000 - Date.now()) / 1000)));
@@ -129,6 +133,15 @@ export default function Home() {
       source: "fallback",
     };
     const recommendationContext = [context, contextNote].filter(Boolean).join(". ");
+    // Check on the device first, so crisis resources appear immediately and never depend on
+    // the network or the recommendation service. The server repeats the same check.
+    const localRoute = hasHighRiskContext(recommendationContext) ? "high-risk" : hasUnsupportedContext(recommendationContext) ? "specialized" : null;
+    if (localRoute) {
+      setIsRecommending(false);
+      setSafetyKind(localRoute);
+      setScreen("safety");
+      return;
+    }
     const response = await fetch("/api/recommendation", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -447,10 +460,13 @@ export default function Home() {
               <p className="lede">You deserve support from a real person right now. Reaching out is a strong next step.</p>
               <div className="support-card crisis-card">
                 <strong>Talk to someone now</strong>
-                <p>In the US, call or text <a href="tel:988">988</a> (Suicide &amp; Crisis Lifeline) any time. It is free and confidential.</p>
-                <p>Outside the US, find a local helpline at <a href="https://findahelpline.com" target="_blank" rel="noopener noreferrer">findahelpline.com</a>.</p>
-                <p>If you are in immediate danger, call your local emergency number.</p>
-                <a href="tel:988" className="primary-button full">Call 988 <Icon name="arrowRight" size={18} /></a>
+                <p>In the US, call or text <a href={crisisResources.call}>988</a> (Suicide &amp; Crisis Lifeline) any time, or <a href={crisisResources.chat} target="_blank" rel="noopener noreferrer">chat online</a>. It is free and confidential.</p>
+                <div className="crisis-actions">
+                  <a href={crisisResources.call} className="primary-button full">Call 988 <Icon name="arrowRight" size={18} /></a>
+                  <a href={crisisResources.text} className="secondary-button full">Text 988</a>
+                </div>
+                <p>Outside the US, find a local helpline at <a href={crisisResources.international} target="_blank" rel="noopener noreferrer">findahelpline.com</a>.</p>
+                <p><strong className="crisis-emergency">If you are in immediate danger, call your local emergency number (911 in the US).</strong></p>
               </div>
             </>
           ) : (
