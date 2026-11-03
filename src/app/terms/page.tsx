@@ -20,7 +20,7 @@ export default function TermsPage() {
         <ul>
           <li>You must be 18 or older to use Pivot.</li>
           <li>Use Pivot for yourself, lawfully, and without trying to disrupt or misuse the service.</li>
-          <li>Notes you write may be sent to Google&apos;s Gemini API for a suggestion, as described in the <Link href="/privacy">privacy policy</Link>.</li>
+          <li>AI suggestions use Google&apos;s Gemini API on its free tier, where Google may use the text you send to improve its products. Leave identifying details out of your notes. The <Link href="/privacy">privacy policy</Link> has the details.</li>
           <li>Your pivots and History belong to you. You can export or delete them at any time in <Link href="/settings">Settings</Link>.</li>
         </ul>
       </LegalSection>
@@ -28,7 +28,7 @@ export default function TermsPage() {
         <p>Pivot is provided as is, without warranties. It may change, pause, or stop, and to the extent the law allows, Pivot and its maker are not liable for how you use it or for any loss from using it.</p>
       </LegalSection>
       <LegalSection title="Changes">
-        <p>If these terms change, the date above will change too. Questions are welcome on <a href="https://github.com/n8watkins/pivot/issues" target="_blank" rel="noopener noreferrer">GitHub</a>.</p>
+        <p>If these terms change, the date above will change too. Questions are welcome on <a href="https://github.com/n8watkins/pivot/issues" target="_blank" rel="noopener noreferrer">GitHub</a>, and security problems can be reported privately through <a href="https://github.com/n8watkins/pivot/security/advisories/new" target="_blank" rel="noopener noreferrer">GitHub security advisories</a>.</p>
       </LegalSection>
     </LegalPage>
   );

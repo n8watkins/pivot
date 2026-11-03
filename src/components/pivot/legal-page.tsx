@@ -16,7 +16,7 @@ export function LegalPage({ eyebrow, title, lede, children }: { eyebrow: string;
           <p className="eyebrow">{eyebrow}</p>
           <h1>{title}</h1>
           <p className="lede">{lede}</p>
-          <p className="legal-updated">Last updated {LEGAL_UPDATED}. This is a plain-language draft and may change after review.</p>
+          <p className="legal-updated">Last updated {LEGAL_UPDATED}.</p>
         </header>
         <div className="legal-body">{children}</div>
         <SafetyFooter />
