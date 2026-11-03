@@ -5,6 +5,8 @@
 // (no network hop), so the delivery code stays in the Next.js bundle and keeps
 // its route-level tests. The route authorizes the call with CRON_SECRET.
 
+import { errorSummary, logError, pathOf } from "../src/lib/log";
+
 export type FetchHandler = {
   fetch(request: Request, env: CloudflareEnv, ctx: ExecutionContext): Promise<Response>;
 };
@@ -37,8 +39,22 @@ export async function runNotificationCron(app: FetchHandler, env: CloudflareEnv,
 
 export function createWorker(app: FetchHandler) {
   return {
-    fetch(request, env, ctx) {
-      return app.fetch(request, env, ctx);
+    async fetch(request, env, ctx) {
+      try {
+        return await app.fetch(request, env, ctx);
+      } catch (err) {
+        // Next reports its own errors (instrumentation onRequestError); this
+        // is for a throw that escapes OpenNext itself.
+        logError({
+          event: "unhandled_exception",
+          reason: "worker_fetch_threw",
+          route: pathOf(request.url),
+          method: request.method,
+          status: 500,
+          error: errorSummary(err),
+        });
+        throw err;
+      }
     },
 
     async scheduled(_controller, env, ctx) {
