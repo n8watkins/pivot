@@ -1,4 +1,13 @@
 import { defineConfig, devices } from "@playwright/test";
+import webPush from "web-push";
+
+// A throwaway VAPID pair for the local E2E server, generated per run so no key is committed.
+// Workers inherit the runner's environment, so every process sees the same pair.
+if (!process.env.PIVOT_E2E_VAPID_PUBLIC_KEY || !process.env.PIVOT_E2E_VAPID_PRIVATE_KEY) {
+  const keys = webPush.generateVAPIDKeys();
+  process.env.PIVOT_E2E_VAPID_PUBLIC_KEY = keys.publicKey;
+  process.env.PIVOT_E2E_VAPID_PRIVATE_KEY = keys.privateKey;
+}
 
 export default defineConfig({
   testDir: "./e2e",
@@ -13,8 +22,8 @@ export default defineConfig({
     env: {
       LOCAL_DB_URL: "file:./data/pivot-e2e.db",
       ENABLE_GEMINI_RECOMMENDATIONS: "false",
-      WEB_PUSH_VAPID_PUBLIC_KEY: "BK2TfgABZLfJhWiR5_CjiCGn5ye868whRRt3KN4hyhCvD_Gunorb9U6RBs6SI5UFs-ah_6wufhLANn9BWhocv3w",
-      WEB_PUSH_VAPID_PRIVATE_KEY: "_VPTqVTIuwOwHyvb7VGVn7IzMqyhpodP34m0FszZA34",
+      WEB_PUSH_VAPID_PUBLIC_KEY: process.env.PIVOT_E2E_VAPID_PUBLIC_KEY,
+      WEB_PUSH_VAPID_PRIVATE_KEY: process.env.PIVOT_E2E_VAPID_PRIVATE_KEY,
       WEB_PUSH_SUBJECT: "mailto:e2e@pivot.test",
       CRON_SECRET: "pivot-e2e-cron-secret",
     },
