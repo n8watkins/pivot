@@ -76,7 +76,7 @@ Copy `.env.example` to `.env.local` and set only the capabilities you want to en
 | `AUTH_GITHUB_ID` | GitHub sign-in | GitHub OAuth application client ID. |
 | `AUTH_GITHUB_SECRET` | GitHub sign-in | GitHub OAuth application client secret. |
 | `WEB_PUSH_VAPID_PUBLIC_KEY` | Notifications | Public browser subscription key from a single persistent VAPID key pair. |
-| `WEB_PUSH_VAPID_PRIVATE_KEY` | Notifications | Private VAPID key stored as a sensitive Vercel variable. |
+| `WEB_PUSH_VAPID_PRIVATE_KEY` | Notifications | Private VAPID key, stored as a Worker secret. |
 | `WEB_PUSH_SUBJECT` | Notifications | A `mailto:` or HTTPS contact identifier for the push provider. |
 | `CRON_SECRET` | Notifications | Protects the hourly notification scheduler route. |
 | `COOKIE_SECURE` | Local production only | Set to `false` for local HTTP testing. |
@@ -130,19 +130,20 @@ Generate one VAPID key pair and keep it stable for the lifetime of existing brow
 npx web-push generate-vapid-keys
 ```
 
-Set the public key normally and protect the private key and cron secret with Vercel's sensitive-variable option.
+Store the pair and the cron secret as Worker secrets; `WEB_PUSH_SUBJECT` is a plain variable in `wrangler.jsonc`.
 
 ```bash
-vercel env add WEB_PUSH_VAPID_PUBLIC_KEY production
-vercel env add WEB_PUSH_VAPID_PRIVATE_KEY production --sensitive
-vercel env add WEB_PUSH_SUBJECT production
-vercel env add CRON_SECRET production --sensitive
+npx wrangler secret put WEB_PUSH_VAPID_PUBLIC_KEY
+npx wrangler secret put WEB_PUSH_VAPID_PRIVATE_KEY
+npx wrangler secret put CRON_SECRET
 ```
 
-The `Notification check-ins` GitHub Actions workflow invokes `/api/cron/notifications` hourly, because the Vercel Hobby plan only allows daily crons.
-Set the same `CRON_SECRET` value as a repository secret (`gh secret set CRON_SECRET`) to turn it on; without it the workflow does nothing.
-The workflow sends `CRON_SECRET` as a bearer token, and the route rejects every request without an exact match.
-Set the `PIVOT_URL` repository variable if the production URL changes.
+On Cloudflare, an hourly Cron Trigger (`7 * * * *` in `wrangler.jsonc`) calls `/api/cron/notifications` in-process with `CRON_SECRET` as a bearer token, and the route rejects every request without an exact match.
+Without `CRON_SECRET` the trigger does nothing.
+
+While production is still on Vercel, the `Notification check-ins` GitHub Actions workflow calls the Vercel deployment hourly instead, because the Vercel Hobby plan only allows daily crons.
+It runs only once the `CRON_SECRET` repository secret matches the Vercel production value, and `PIVOT_URL` (a repository variable) names the deployment it calls.
+Delete that workflow once production moves to the Worker: the Cron Trigger replaces it.
 
 ## Privacy and safety
 
@@ -188,11 +189,35 @@ Playwright starts the production build on port 3101 against an isolated `data/pi
 It never reuses the manual-testing server or `data/pivot.db`.
 The suite uses one worker because every browser test intentionally shares that single isolated SQLite server.
 Legacy API-mocking flows block service workers, while the dedicated PWA suite enables them for install, update, and offline verification.
-The GitHub workflow runs the same gates on pushes to `main` and pull requests.
+The GitHub workflow runs the same gates on pushes to `main` and pull requests, plus a `Worker build` job (binding types, the OpenNext build and a dry-run bundle).
 
-## Deploy to Vercel
+`PLAYWRIGHT_BASE_URL=<url>` runs the suite against a running deployment instead of a local build.
+`PIVOT_E2E_DB_URL` (and `PIVOT_E2E_DB_AUTH_TOKEN`) then name that deployment's throwaway database, and `PIVOT_E2E_CRON_SECRET` its cron secret; without a database the specs that read rows directly are skipped (see [`e2e/env.ts`](e2e/env.ts)).
+To run the whole suite on the Workers runtime locally, start a libSQL server with `turso dev -p 8089 -f data/pivot-e2e-worker.db`, write `.dev.vars` with `TURSO_DATABASE_URL=http://127.0.0.1:8089`, `COOKIE_SECURE=false`, a VAPID pair and `CRON_SECRET=pivot-e2e-cron-secret`, then run `npm run preview:worker -- --port 8788` and `PLAYWRIGHT_BASE_URL=http://localhost:8788 PIVOT_E2E_DB_URL=http://127.0.0.1:8089 npm run test:e2e`.
 
-Create a Turso database and set `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` in the Vercel project before the first production request.
+## Hosting on Cloudflare Workers
+
+Pivot runs on Cloudflare Workers, built with [`@opennextjs/cloudflare`](https://opennext.js.org/cloudflare), at https://pivot.nathancwatkins23.workers.dev until a custom domain is chosen.
+The Vercel deployment at https://pivot-lilac-nu.vercel.app keeps serving production until that cutover.
+[`wrangler.jsonc`](wrangler.jsonc) holds the Worker config: the hourly Cron Trigger and the plain variables.
+[`worker/index.ts`](worker/index.ts) is the entry point; it serves the Next.js app and adds the Cron Trigger handler from [`worker/handlers.ts`](worker/handlers.ts).
+[`.dev.vars.example`](.dev.vars.example) lists every secret.
+
+```bash
+npm run build:worker     # OpenNext build into .open-next/
+npm run preview:worker   # build, then serve it locally in workerd (reads .dev.vars)
+npm run deploy:worker    # build, then deploy
+npm run cf-typegen       # regenerate cloudflare-env.d.ts after changing wrangler.jsonc or .dev.vars.example
+```
+
+Keep `.env*` files with secrets out of the working tree when building for a deploy: OpenNext copies Next.js `.env` files into the Worker bundle.
+The [`Deploy`](.github/workflows/deploy.yml) workflow deploys `main` after CI passes on it, once the `CLOUDFLARE_API_TOKEN` repository secret exists; until then it skips.
+Only `main` deploys, so `release/*` branches from the release train never do (on Vercel, `vercel.json` turns them off).
+Auth.js trusts the request host, so sign-in works on whichever origin serves the app; register `<origin>/api/auth/callback/github` as the GitHub OAuth app's callback URL.
+
+## Deploy
+
+Create a Turso database and set `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` as Worker secrets before the first production request.
 Migrations run automatically on the first request after a deploy; `npm run db:migrate` runs them ahead of time.
 Set the four Web Push variables described above, then the `CRON_SECRET` repository secret, to turn on check-ins.
 Leave `ENABLE_GEMINI_RECOMMENDATIONS=false` until model-backed recommendations are intentionally released.

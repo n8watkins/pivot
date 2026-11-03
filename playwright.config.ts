@@ -1,5 +1,6 @@
 import { defineConfig, devices } from "@playwright/test";
 import webPush from "web-push";
+import { externalBaseURL } from "./e2e/env";
 
 // A throwaway VAPID pair for the local E2E server, generated per run so no key is committed.
 // Workers inherit the runner's environment, so every process sees the same pair.
@@ -9,14 +10,19 @@ if (!process.env.PIVOT_E2E_VAPID_PUBLIC_KEY || !process.env.PIVOT_E2E_VAPID_PRIV
   process.env.PIVOT_E2E_VAPID_PRIVATE_KEY = keys.privateKey;
 }
 
+const localBaseURL = "http://[::1]:3101";
+
+// PLAYWRIGHT_BASE_URL runs the suite against a deployment that is already up
+// (the Worker on workers.dev, or `npm run preview:worker`) instead of starting
+// a local production build. See e2e/env.ts for the variables that go with it.
 export default defineConfig({
   testDir: "./e2e",
   timeout: 30_000,
   workers: 1,
-  use: { baseURL: "http://[::1]:3101", trace: "retain-on-failure" },
-  webServer: {
+  use: { baseURL: externalBaseURL ?? localBaseURL, trace: "retain-on-failure" },
+  webServer: externalBaseURL ? undefined : {
     command: "npm run start:sqlite -- --port 3101",
-    url: "http://[::1]:3101",
+    url: localBaseURL,
     reuseExistingServer: true,
     timeout: 30_000,
     env: {

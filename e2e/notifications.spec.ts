@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { createClient } from "@libsql/client";
+import { e2eCronSecret, e2eDatabase, hasE2EDatabase } from "./env";
 
 const p256dh = "BAkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQk";
 const auth = "AwMDAwMDAwMDAwMDAwMDAw";
@@ -51,7 +52,7 @@ async function installPushHarness(page: Page, permissionResult: "granted" | "den
 }
 
 async function executeWhenDatabaseIsAvailable(statement: { sql: string; args: string[] }) {
-  const db = createClient({ url: "file:./data/pivot-e2e.db" });
+  const db = createClient({ url: e2eDatabase.url!, authToken: e2eDatabase.authToken });
   try {
     for (let attempt = 0; attempt < 20; attempt += 1) {
       try {
@@ -117,6 +118,7 @@ test("subscription API rejects malformed encryption material", async ({ request 
 });
 
 test("deleting all data removes notification preferences, subscriptions, and deliveries", async ({ page }) => {
+  test.skip(!hasE2EDatabase, "needs direct access to the deployment's database");
   await installPushHarness(page, "granted", `https://push.example.test/${crypto.randomUUID()}`);
   await page.goto("/settings");
   await page.getByRole("radio", { name: /Weekly/ }).click();
@@ -149,11 +151,12 @@ test("notification messages never contain private Pivot content", async ({ reque
 });
 
 test("notification scheduler requires the dedicated cron secret", async ({ request }) => {
+  test.skip(!hasE2EDatabase, "delivery needs persistent storage");
   const unauthorized = await request.get("/api/cron/notifications");
   expect(unauthorized.status()).toBe(401);
   expect(unauthorized.headers()["cache-control"]).toContain("no-store");
 
-  const authorized = await request.get("/api/cron/notifications", { headers: { Authorization: "Bearer pivot-e2e-cron-secret" } });
+  const authorized = await request.get("/api/cron/notifications", { headers: { Authorization: `Bearer ${e2eCronSecret}` } });
   expect(authorized.ok()).toBeTruthy();
   await expect(authorized.json()).resolves.toMatchObject({ ok: true, sent: expect.any(Number), deduplicated: expect.any(Number), expired: expect.any(Number) });
 });
