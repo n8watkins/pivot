@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.1 - 2026-11-02
+
+### Fixed
+
+- AI suggestions use Gemini 3.5 Flash-Lite and no longer time out so often ([#23](https://github.com/n8watkins/pivot/pull/23))
+- Privacy and terms are final and say AI suggestions use Gemini's free tier ([#22](https://github.com/n8watkins/pivot/pull/22))
+
 ## 0.2.0 - 2026-11-02
 
 First tagged release: a calmer pause button for everyday urges, with robust crisis resources, plain privacy and terms, context-aware suggestions, and an installable app shell.
