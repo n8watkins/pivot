@@ -9,6 +9,7 @@ import { Icon, Progress, ReplacementIcon } from "@/components/pivot/ui";
 import { crisisResources, hasHighRiskContext, hasUnsupportedContext } from "@/lib/crisis";
 import { rankWithContext } from "@/lib/ranking";
 import { fallbackFirstStep } from "@/lib/replacement-copy";
+import { RECOMMENDATION_REQUEST_TIMEOUT_MS } from "@/lib/gemini";
 
 type Screen = "home" | "urge" | "recommendation" | "active" | "followup" | "history" | "safety";
 type Pivot = { id: string; goal: string; replacements: Replacement[] };
@@ -200,7 +201,7 @@ export default function Home() {
     const response = await fetch("/api/recommendation", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      signal: AbortSignal.timeout(6000),
+      signal: AbortSignal.timeout(RECOMMENDATION_REQUEST_TIMEOUT_MS),
       body: JSON.stringify({ replacements: approved, context: recommendationContext, pivotId: activePivot.id, tag: context, intensity: urgeTouched ? urge : undefined, hour: new Date().getHours() }),
     }).catch(() => null);
     const result = response?.ok ? await response.json().catch(() => null) : null;
