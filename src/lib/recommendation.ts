@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { rankWithContext, type RankingContext, type RankingHistory } from "./ranking";
 import { fallbackFirstStep } from "./replacement-copy";
 
 export const recommendationSchema = z.object({
@@ -14,21 +15,20 @@ export type ReplacementOption = { id: string; name: string; detail: string; dura
 
 export { hasCrisisLanguage, hasHighRiskContext, hasUnsupportedContext } from "./crisis";
 
-export function rankReplacements(options: ReplacementOption[], history: { replacementId: string; helpful: boolean }[] = []) {
-  const scores = new Map(options.map((option, index) => [option.id, options.length - index]));
-  for (const event of history) scores.set(event.replacementId, (scores.get(event.replacementId) ?? 0) + (event.helpful ? 3 : -2));
-  return [...options].sort((a, b) => (scores.get(b.id) ?? 0) - (scores.get(a.id) ?? 0));
+export function rankReplacements(options: ReplacementOption[], history: RankingHistory[] = [], context: RankingContext = {}) {
+  return rankWithContext(options, context, history).map((entry) => entry.action);
 }
 
-export function deterministicFallback(options: ReplacementOption[], history: { replacementId: string; helpful: boolean }[] = []): Recommendation {
-  const ranked = rankReplacements(options, history);
+/** The deterministic pick: context-aware ranking with a reason written from the user's inputs. */
+export function deterministicFallback(options: ReplacementOption[], history: RankingHistory[] = [], context: RankingContext = {}): Recommendation {
+  const ranked = rankWithContext(options, context, history);
   const primary = ranked[0];
   if (!primary) throw new Error("At least one approved replacement is required");
   return {
-    replacementId: primary.id,
-    reason: "It is an approved option that can change the shape of this moment.",
-    firstStep: fallbackFirstStep(primary),
-    alternatives: ranked.slice(1, 3).map((option) => option.id),
+    replacementId: primary.action.id,
+    reason: primary.reason,
+    firstStep: fallbackFirstStep(primary.action),
+    alternatives: ranked.slice(1, 3).map((entry) => entry.action.id),
     safety: "safe",
   };
 }

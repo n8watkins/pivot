@@ -7,11 +7,12 @@ import { AppShell, type UtilityNavItem } from "@/components/pivot/app-shell";
 import { PivotStatsRail } from "@/components/pivot/pivot-stats-rail";
 import { Icon, Progress, ReplacementIcon } from "@/components/pivot/ui";
 import { crisisResources, hasHighRiskContext, hasUnsupportedContext } from "@/lib/crisis";
+import { rankWithContext } from "@/lib/ranking";
 import { fallbackFirstStep } from "@/lib/replacement-copy";
 
 type Screen = "home" | "urge" | "recommendation" | "active" | "followup" | "history" | "safety";
 type Pivot = { id: string; goal: string; replacements: Replacement[] };
-type HistoryEvent = { id?: string; pivotId?: string; pivotGoal?: string; date: string; choice: string; outcome: string };
+type HistoryEvent = { id?: string; pivotId?: string; pivotGoal?: string; date: string; choice: string; outcome: string; replacementId?: string; helpful?: boolean; contextType?: string };
 type RecommendationResult = { replacementId: string; reason: string; firstStep: string; alternatives: string[]; source: "gemini" | "fallback" };
 
 function durationInSeconds(duration: string) {
@@ -52,6 +53,8 @@ export default function Home() {
   const [activePivotId, setActivePivotId] = useState<string | null>(null);
   const [stateReady, setStateReady] = useState(false);
   const [urge, setUrge] = useState(7);
+  // The slider starts at 7; only an intensity the user actually set should steer the pick.
+  const [urgeTouched, setUrgeTouched] = useState(false);
   const [context, setContext] = useState("");
   const [contextNote, setContextNote] = useState("");
   const [customContext, setCustomContext] = useState("");
@@ -176,11 +179,12 @@ export default function Home() {
     const requestedPivotId = activePivot.id;
     setIsRecommending(true);
     setFlowError("");
+    const localRanking = rankWithContext(approved, { tag: context, intensity: urgeTouched ? urge : undefined, hour: new Date().getHours() }, history.filter((event) => event.pivotId === requestedPivotId && event.replacementId).map((event) => ({ replacementId: event.replacementId!, helpful: Boolean(event.helpful), contextType: event.contextType })));
     const fallback: RecommendationResult = {
-      replacementId: approved[0].id,
-      reason: "It is an approved option that can change the shape of this moment.",
-      firstStep: fallbackFirstStep(approved[0]),
-      alternatives: approved.slice(1, 3).map((item) => item.id),
+      replacementId: localRanking[0].action.id,
+      reason: localRanking[0].reason,
+      firstStep: fallbackFirstStep(localRanking[0].action),
+      alternatives: localRanking.slice(1, 3).map((entry) => entry.action.id),
       source: "fallback",
     };
     const recommendationContext = [context, contextNote].filter(Boolean).join(". ");
@@ -197,7 +201,7 @@ export default function Home() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       signal: AbortSignal.timeout(6000),
-      body: JSON.stringify({ replacements: approved, context: recommendationContext, pivotId: activePivot.id }),
+      body: JSON.stringify({ replacements: approved, context: recommendationContext, pivotId: activePivot.id, tag: context, intensity: urgeTouched ? urge : undefined, hour: new Date().getHours() }),
     }).catch(() => null);
     const result = response?.ok ? await response.json().catch(() => null) : null;
     if (flowRequestVersionRef.current !== requestVersion || activePivotIdRef.current !== requestedPivotId) return;
@@ -277,7 +281,7 @@ export default function Home() {
       setFlowError("Your check-in could not be saved. Please try again.");
       return;
     }
-    const next = [{ id: payload?.eventId, pivotId: activePivot.id, pivotGoal: activePivot.goal, date: new Date().toISOString(), choice: primary.name, outcome }, ...history];
+    const next = [{ id: payload?.eventId, pivotId: activePivot.id, pivotGoal: activePivot.goal, date: new Date().toISOString(), choice: primary.name, outcome, replacementId: primary.id, helpful, contextType: context }, ...history];
     setHistory(next);
     localStorage.setItem("pivot-state", JSON.stringify({ goal, selected, customReplacements, pivots, activePivotId, customContexts, history: next }));
     setCompletionMessage(outcome === "I went back to it" ? "Recorded without judgment. The next moment is a fresh chance." : "Check-in saved. Small moments count.");
@@ -289,6 +293,7 @@ export default function Home() {
     setContext("");
     setContextNote("");
     setUrge(7);
+    setUrgeTouched(false);
     updateAppUrl(appHref(activePivot.id), "replace");
   }
 
@@ -443,7 +448,7 @@ export default function Home() {
               </div>
               <label className="field-label" htmlFor="custom-context">Add your own tag <span>Optional</span></label>
               <div className="goal-add-row context-add-row">
-                <input id="custom-context" className="text-input" placeholder="e.g. restless, lonely, procrastinating" value={customContext} onChange={(event) => setCustomContext(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); addContextTag(); } }} />
+                <input id="custom-context" className="text-input" placeholder="e.g. restless, lonely" value={customContext} onChange={(event) => setCustomContext(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); addContextTag(); } }} />
                 <button type="button" className="small-button" onClick={addContextTag} disabled={!customContext.trim() || isSavingContext}>{isSavingContext ? "Saving..." : "Add"}</button>
               </div>
             </div>
@@ -453,7 +458,7 @@ export default function Home() {
               <p className="private-field-note">Your note is sent to Google Gemini for this suggestion and is never stored. <Link href="/privacy">Privacy</Link></p>
               <div className="intensity">
                 <div><span className="field-label">How strong is it?</span><strong>{urge} / 10</strong></div>
-                <input type="range" min="1" max="10" value={urge} onChange={(event) => setUrge(Number(event.target.value))} aria-label="Urge intensity" />
+                <input type="range" min="1" max="10" value={urge} onChange={(event) => { setUrge(Number(event.target.value)); setUrgeTouched(true); }} aria-label="Urge intensity" />
               </div>
             </div>
           </div>
@@ -532,7 +537,7 @@ export default function Home() {
             <>
               <p className="eyebrow">One last detail</p>
               <h1>Did this action help?</h1>
-              <p className="lede">You said the urge is “{followupOutcome.toLowerCase()}.” Was {primary.name.toLowerCase()} useful this time?</p>
+              <p className="lede">You said the urge is “{followupOutcome.toLowerCase()}.” Did “{primary.name}” help this time?</p>
               {flowError && <p className="form-status" role="status">{flowError}</p>}
               <div className="helpfulness-actions">
                 <button type="button" className="primary-button full" disabled={isCompleting} onClick={() => complete(followupOutcome, true)}>{isCompleting ? "Saving..." : "Yes, it helped"} <Icon name="arrowRight" size={18} /></button>

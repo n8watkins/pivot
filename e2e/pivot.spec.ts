@@ -1,4 +1,12 @@
 import { expect, test } from "@playwright/test";
+
+// Recommendations consider the time of day. Start every page at 13:00 local time so results do
+// not depend on when the suite runs; time then flows normally for timers.
+test.beforeEach(async ({ page }) => {
+  const midday = new Date();
+  midday.setHours(13, 0, 0, 0);
+  await page.clock.install({ time: midday });
+});
 import { createClient } from "@libsql/client";
 import AxeBuilder from "@axe-core/playwright";
 
@@ -57,6 +65,7 @@ test("new user can complete a pivot and review history", async ({ page }) => {
   await page.getByRole("button", { name: /I’m done for now/ }).click();
   await expect(page.getByText("Check-in in progress")).toBeVisible();
   await page.getByRole("button", { name: "Much lighter" }).click();
+  await expect(page.getByText("Did “Take a short walk” help this time?")).toBeVisible();
   await Promise.all([page.waitForResponse("**/api/closed-loop"), page.getByRole("button", { name: "Yes, it helped" }).click()]);
   await expect(page.getByRole("status")).toContainText("Check-in saved");
   await page.getByRole("button", { name: /History/ }).click();
@@ -209,6 +218,35 @@ test("desktop urge actions stay visible without initial scrolling", async ({ pag
   const bounds = await action.boundingBox();
   expect(bounds).not.toBeNull();
   expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(900);
+});
+
+for (const [width, height] of [[390, 844], [360, 640]]) {
+  test(`phone urge action stays above the tab bar without scrolling at ${width}x${height}`, async ({ page }) => {
+    await page.setViewportSize({ width, height });
+    await createBasicPivot(page);
+    await page.getByRole("button", { name: /I’m having an urge/ }).click();
+    const action = page.getByRole("button", { name: /Show me a next step/ });
+    await expect(action).toBeInViewport();
+    const bounds = await action.boundingBox();
+    const tabbar = await page.getByRole("navigation", { name: "Mobile navigation" }).boundingBox();
+    expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(tabbar!.y);
+    // Optional context is still reachable by scrolling, and the action stays put.
+    await page.getByLabel("Urge intensity").scrollIntoViewIfNeeded();
+    await expect(page.getByLabel("Urge intensity")).toBeInViewport();
+    await expect(action).toBeInViewport();
+  });
+}
+
+test("the recommendation fits the context the user shares and says why", async ({ page }) => {
+  await createBasicPivot(page);
+  await page.getByRole("button", { name: /I’m having an urge/ }).click();
+  await page.getByRole("button", { name: "Tired", exact: true }).click();
+  await page.getByLabel("Urge intensity").fill("9");
+  await page.getByRole("button", { name: /Show me a next step/ }).click();
+  await expect(page.getByRole("heading", { name: /Try this for/ })).toBeVisible();
+  await expect(page.locator(".recommend-card h2")).not.toHaveText("Take a short walk");
+  await expect(page.locator(".recommend-card .reason")).toContainText(/strong urge|tired/);
+  await expect(page.locator(".recommend-card .reason")).not.toContainText("approved option");
 });
 
 test("setup supports multiple goals and a custom replacement", async ({ page }) => {
@@ -649,4 +687,16 @@ test("primary pages have no automated accessibility violations", async ({ page }
     const results = await new AxeBuilder({ page }).analyze();
     expect(results.violations, `${path}: ${results.violations.map((violation) => `${violation.id} - ${violation.help}`).join(", ")}`).toEqual([]);
   }
+});
+
+test("late at night the pick avoids heading outside", async ({ page }) => {
+  const late = new Date();
+  late.setHours(23, 30, 0, 0);
+  await page.clock.install({ time: late });
+  await createBasicPivot(page);
+  await page.getByRole("button", { name: /I’m having an urge/ }).click();
+  await page.getByRole("button", { name: "Skip and show me something" }).click();
+  await expect(page.getByRole("heading", { name: /Try this for/ })).toBeVisible();
+  await expect(page.locator(".recommend-card h2")).not.toHaveText("Take a short walk");
+  await expect(page.locator(".recommend-card .reason")).toContainText("It’s late");
 });
