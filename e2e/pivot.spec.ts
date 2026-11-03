@@ -339,6 +339,8 @@ test("switching pivots in History filters the visible entries", async ({ page })
   await page.getByRole("button", { name: /I’m done for now/ }).click();
   await page.getByRole("button", { name: "Much lighter" }).click();
   await page.getByRole("button", { name: "Yes, it helped" }).click();
+  // Wait for the save: until it lands the check-in screen is still up, without navigation.
+  await expect(page.getByRole("status")).toContainText("Check-in saved");
   await page.getByRole("button", { name: "History" }).click();
   await expect(page.getByText("Alpha action")).toBeVisible();
   await page.getByRole("button", { name: "Pivot beta", exact: true }).click();
@@ -523,6 +525,8 @@ test("a completed and deleted check-in leaves no intervention records behind", a
   await page.getByRole("button", { name: /I’m done for now/ }).click();
   await page.getByRole("button", { name: "Much lighter" }).click();
   await page.getByRole("button", { name: "Yes, it helped" }).click();
+  // Wait for the save: until it lands the check-in screen is still up, without navigation.
+  await expect(page.getByRole("status")).toContainText("Check-in saved");
 
   const db = createClient({ url: "file:./data/pivot-e2e.db" });
   const completed = await executeWhenDatabaseIsAvailable(db, {
