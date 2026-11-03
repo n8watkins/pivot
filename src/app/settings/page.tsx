@@ -7,7 +7,6 @@ import { signIn, signOut } from "next-auth/react";
 import { AppShell, type UtilityNavItem } from "@/components/pivot/app-shell";
 import { InstallPivot } from "@/components/pivot/install-pivot";
 import { NotificationSettings } from "@/components/pivot/notification-settings";
-import { LegalLinks } from "@/components/pivot/legal-page";
 import { Icon } from "@/components/pivot/ui";
 import { unsubscribeCurrentPushSubscription } from "@/lib/push-client";
 
@@ -112,7 +111,6 @@ export default function SettingsPage() {
           </aside>
         </div>
         <p className="privacy-note"><span className="privacy-ic"><Icon name="shield" size={15} /></span> Pivot does not require an account to be useful.</p>
-        <LegalLinks />
       </div>
     </AppShell>
   );

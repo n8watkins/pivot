@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
+import { SafetyFooter } from "@/components/pivot/legal-page";
 import { Icon, Logo, type IconName } from "@/components/pivot/ui";
 
 export type PivotSummary = { id: string; goal: string };
@@ -144,6 +145,8 @@ export function AppShell({
         </div>
 
         {rightRail && <aside className="shell-rail" aria-label="Pivot summary">{rightRail}</aside>}
+
+        <SafetyFooter />
 
         <nav className="shell-tabbar" aria-label="Mobile navigation">
           {utilityNav.map((item) => renderUtil(item, "shell-tab"))}

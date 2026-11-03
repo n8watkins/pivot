@@ -152,7 +152,13 @@ textarea {
 
 .shell-body {
   min-width: 0;
-  padding: 20px max(20px, env(safe-area-inset-right)) calc(88px + env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
+  padding: 20px max(20px, env(safe-area-inset-right)) 8px max(20px, env(safe-area-inset-left));
+}
+
+/* The safety footer is the last thing in the shell and clears the fixed phone tab bar. */
+.shell > .safety-footer {
+  margin: 24px max(20px, calc((100% - 560px) / 2)) 0;
+  padding-bottom: calc(88px + env(safe-area-inset-bottom));
 }
 
 .shell-content {
@@ -1546,8 +1552,30 @@ h1 {
   font-size: 12px;
 }
 
-.privacy-note + .legal-links {
-  margin-top: 10px;
+.safety-footer {
+  margin: 40px auto 0;
+  max-width: 560px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.55;
+  text-align: center;
+}
+
+.safety-footer p {
+  margin: 0;
+}
+
+.safety-footer p a {
+  color: var(--deep-sage);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.safety-footer .legal-links {
+  margin-top: 8px;
 }
 
 .legal-links a {
@@ -2025,7 +2053,7 @@ h1 {
   }
 
   .shell.has-rail .shell-rail {
-    padding-bottom: calc(88px + env(safe-area-inset-bottom));
+    padding-bottom: 8px;
   }
 }
 
@@ -2046,6 +2074,20 @@ h1 {
 
   .shell.has-rail {
     grid-template-columns: var(--sidebar-w) minmax(0, 1fr) var(--rail-w);
+  }
+
+  .shell-sidebar,
+  .shell-rail {
+    grid-row: 1 / span 2;
+  }
+
+  .shell > .safety-footer {
+    grid-column: 2;
+    grid-row: 2;
+    align-self: end;
+    width: min(560px, calc(100% - 2 * clamp(28px, 4vw, 56px)));
+    margin: 0 auto;
+    padding-bottom: 32px;
   }
 
   .shell-sidebar {
@@ -2281,7 +2323,8 @@ h1 {
     display: flex;
     flex-direction: column;
     justify-content: center;
-    min-height: calc(100svh - 128px);
+    /* Leave room for the safety footer so it stays on screen. */
+    min-height: calc(100svh - 240px);
     padding-top: 0;
   }
 

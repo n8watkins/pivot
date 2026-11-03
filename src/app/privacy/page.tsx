@@ -22,19 +22,30 @@ export default function PrivacyPage() {
         <p>The optional note you type during an urge is never saved by Pivot. It is not in History, not in your data export, and not in our database.</p>
       </LegalSection>
       <LegalSection title="Where your note goes">
-        <p>When Gemini suggestions are on, your note, the tag you picked, and your list of actions are sent to Google&apos;s Gemini API to choose a suggestion. Google handles that request under the <a href="https://ai.google.dev/gemini-api/terms" target="_blank" rel="noopener noreferrer">Gemini API terms</a>, which set how long Google keeps it and how it may be used. If Gemini is off or unavailable, Pivot picks a suggestion on its own and nothing is sent.</p>
+        <p>When Gemini suggestions are on, your note, the tag you picked, and your list of actions are sent to Google&apos;s Gemini API to choose a suggestion. Google handles that request under the <a href="https://ai.google.dev/gemini-api/terms" target="_blank" rel="noopener noreferrer">Gemini API terms</a>, which set how long Google keeps it and how it may be used. Depending on the Gemini plan in use, those terms can allow Google to use submitted text to improve its services, including review by people, so please leave names and other identifying details out of your note. If Gemini is off or unavailable, Pivot picks a suggestion on its own and nothing is sent.</p>
+        <p>Before anything is sent, Pivot checks the note on your device for crisis language. If it finds any, it shows crisis resources instead and does not send the note.</p>
       </LegalSection>
-      <LegalSection title="What Pivot never does">
-        <p>No ads, no tracking scripts, and no selling or sharing your data. Pivot is hosted on Vercel and stores data with Turso, who process it only to run the app.</p>
+      <LegalSection title="Who else handles data">
+        <p>No ads, no tracking or analytics scripts, and no selling or sharing your data. Pivot is hosted on Vercel and stores data with Turso, who process it only to run the app. Like most websites, the hosting provider keeps short-lived request logs (such as IP address, browser, and the page requested) for security and debugging. If you connect GitHub, GitHub handles that sign-in.</p>
+      </LegalSection>
+      <LegalSection title="How long data is kept">
+        <ul>
+          <li>Your pivots, actions, tags, and History stay until you delete them in Settings. Deletion is immediate and complete.</li>
+          <li>The anonymous session cookie expires after a year.</li>
+          <li>If you clear your cookies without deleting first, Pivot can no longer connect that data to you, and it stays stored until it is removed. Pivot does not yet delete inactive data automatically.</li>
+        </ul>
       </LegalSection>
       <LegalSection title="Your control">
-        <p>In <Link href="/settings">Settings</Link> you can download all of your data as JSON or delete it, along with your session or connected account. Deletion is immediate.</p>
+        <p>In <Link href="/settings">Settings</Link> you can download all of your data as JSON or delete it, along with your session or connected account.</p>
+      </LegalSection>
+      <LegalSection title="Who Pivot is for">
+        <p>Pivot is meant for adults 18 and over. It is not designed for children and does not knowingly collect data from them.</p>
       </LegalSection>
       <LegalSection title="Health and safety">
-        <p>Pivot is not medical or mental-health treatment, and it is not crisis care. If you are in crisis in the US, call or text 988. Elsewhere, see <a href="https://findahelpline.com" target="_blank" rel="noopener noreferrer">findahelpline.com</a>.</p>
+        <p>Pivot is not medical or mental-health treatment, therapy, or an emergency service, and it is not crisis care. If you are in crisis in the US, call or text 988. If you are in immediate danger, call your local emergency number. Elsewhere, see <a href="https://findahelpline.com" target="_blank" rel="noopener noreferrer">findahelpline.com</a>.</p>
       </LegalSection>
       <LegalSection title="Questions">
-        <p>Open an issue on <a href="https://github.com/n8watkins/pivot/issues" target="_blank" rel="noopener noreferrer">GitHub</a>. Please do not include personal details there. If this policy changes, the date above will change too.</p>
+        <p>Open an issue on <a href="https://github.com/n8watkins/pivot/issues" target="_blank" rel="noopener noreferrer">GitHub</a>, and please do not include personal details there. Security problems can be reported privately through <a href="https://github.com/n8watkins/pivot/security/advisories/new" target="_blank" rel="noopener noreferrer">GitHub security advisories</a>. If this policy changes, the date above will change too.</p>
       </LegalSection>
     </LegalPage>
   );
