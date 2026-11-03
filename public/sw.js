@@ -1,4 +1,4 @@
-const CACHE_VERSION = "pivot-shell-v2";
+const CACHE_VERSION = "pivot-shell-v3";
 const SHELL_CACHE = `${CACHE_VERSION}-pages`;
 const ASSET_CACHE = `${CACHE_VERSION}-assets`;
 const OFFLINE_URL = "/offline";

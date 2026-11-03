@@ -130,11 +130,17 @@ export function Icon({
   );
 }
 
-export function Logo() {
+/**
+ * Pivot's mark: a lowercase "p" drawn as one stroke, with a coral arrow pointing back at the stem.
+ * The stroke follows the surface's --logo-stroke token (sage on light, paper on dark); the arrow
+ * stays coral on both. Pass `label` when no visible "pivot" wordmark sits next to it.
+ */
+export function Logo({ size = 28, label }: { size?: number; label?: string }) {
   return (
-    <div className="logo-mark" aria-hidden="true">
-      <Icon name="spark" size={16} strokeWidth={1.9} />
-    </div>
+    <svg className="logo-mark" viewBox="104 72 304 368" width={Math.round((size * 304) / 368)} height={size} {...(label ? { role: "img", "aria-label": label } : { "aria-hidden": true })} focusable="false">
+      <path d="M168 412 V192 A70 70 0 0 1 238 122 H258 A96 96 0 0 1 258 314 H284" fill="none" stroke="var(--logo-stroke)" strokeWidth="58" strokeLinecap="round" strokeLinejoin="round" />
+      <polygon points="214,314 280,268 280,360" fill="var(--logo-arrow)" stroke="var(--logo-arrow)" strokeWidth="14" strokeLinejoin="round" />
+    </svg>
   );
 }
 
