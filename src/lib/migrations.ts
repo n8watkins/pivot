@@ -80,6 +80,34 @@ const migrations = [
       "ALTER TABLE active_interventions ADD COLUMN source TEXT NOT NULL DEFAULT 'fallback'",
     ],
   },
+  {
+    version: 9,
+    statements: [
+      "INSERT OR IGNORE INTO urge_sessions (id, session_id, pivot_id, pivot_label, intensity, context_type, created_at) SELECT 'legacy-urge-' || a.id, a.session_id, a.pivot_id, COALESCE(p.label, 'Past pivot'), 1, '', a.started_at FROM active_interventions a LEFT JOIN recommendations r ON r.id = a.recommendation_id LEFT JOIN pivots p ON p.id = a.pivot_id AND p.session_id = a.session_id WHERE r.id IS NULL AND a.completed_at IS NULL",
+      "INSERT OR IGNORE INTO recommendations (id, urge_session_id, replacement_id, replacement_label, source, reason, first_step, created_at) SELECT a.recommendation_id, 'legacy-urge-' || a.id, a.replacement_id, COALESCE((SELECT rp.label FROM replacements rp WHERE rp.session_id = a.session_id AND rp.pivot_id = a.pivot_id AND (rp.id = a.replacement_id OR substr(rp.id, instr(rp.id, ':') + 1) = a.replacement_id) LIMIT 1), 'Past action'), a.source, a.reason, a.first_step, a.started_at FROM active_interventions a LEFT JOIN recommendations r ON r.id = a.recommendation_id WHERE r.id IS NULL AND a.completed_at IS NULL",
+      "DELETE FROM active_interventions WHERE completed_at IS NOT NULL AND recommendation_id NOT IN (SELECT id FROM recommendations)",
+      "DELETE FROM follow_ups WHERE rowid NOT IN (SELECT MIN(rowid) FROM follow_ups GROUP BY intervention_id)",
+      "CREATE UNIQUE INDEX IF NOT EXISTS idx_follow_ups_unique_intervention ON follow_ups(intervention_id)",
+    ],
+  },
+  {
+    version: 10,
+    statements: [
+      "CREATE TABLE IF NOT EXISTS rate_limits (key TEXT NOT NULL, window_start INTEGER NOT NULL, count INTEGER NOT NULL, expires_at INTEGER NOT NULL, PRIMARY KEY (key, window_start))",
+      "CREATE INDEX IF NOT EXISTS idx_rate_limits_expires ON rate_limits(expires_at)",
+    ],
+  },
+  {
+    version: 11,
+    statements: [
+      "CREATE TABLE IF NOT EXISTS notification_preferences (session_id TEXT PRIMARY KEY, cadence TEXT NOT NULL CHECK (cadence IN ('off', 'weekly', 'monthly')), timezone TEXT NOT NULL, updated_at TEXT NOT NULL)",
+      "CREATE TABLE IF NOT EXISTS push_subscriptions (id TEXT PRIMARY KEY, session_id TEXT NOT NULL, endpoint TEXT NOT NULL UNIQUE, p256dh TEXT NOT NULL, auth TEXT NOT NULL, expiration_time INTEGER, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)",
+      "CREATE INDEX IF NOT EXISTS idx_push_subscriptions_session ON push_subscriptions(session_id)",
+      "CREATE TABLE IF NOT EXISTS notification_deliveries (id TEXT PRIMARY KEY, subscription_id TEXT NOT NULL, cadence TEXT NOT NULL, period_key TEXT NOT NULL, scheduled_for TEXT NOT NULL, status TEXT NOT NULL, created_at TEXT NOT NULL, sent_at TEXT, error_code TEXT)",
+      "CREATE UNIQUE INDEX IF NOT EXISTS idx_notification_deliveries_dedup ON notification_deliveries(subscription_id, cadence, period_key)",
+      "CREATE INDEX IF NOT EXISTS idx_notification_deliveries_subscription ON notification_deliveries(subscription_id)",
+    ],
+  },
 ] as const;
 
 async function hasColumn(db: Client, table: string, column: string) {

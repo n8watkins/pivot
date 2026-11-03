@@ -1,22 +1,32 @@
 import { NextResponse } from "next/server";
 import { deleteContextTag, saveContextTag } from "@/lib/domain";
-import { ensureSession } from "@/lib/session";
+import { ensureSession, getDatabase } from "@/lib/session";
 import { isRateLimited, rateLimitResponse } from "@/lib/rate-limit";
+import { contextTagSchema } from "@/lib/schemas";
+import { defaultContextTags } from "@/components/pivot/data";
+import { rejectCrossOriginMutation } from "@/lib/request-security";
 
 export async function POST(request: Request) {
+  const rejected = rejectCrossOriginMutation(request);
+  if (rejected) return rejected;
   const sessionId = await ensureSession();
-  if (isRateLimited(`tags:${sessionId}`, 30)) return rateLimitResponse();
+  if (await isRateLimited(`tags:${sessionId}`, 30, { database: getDatabase() })) return rateLimitResponse();
   const body = await request.json().catch(() => ({}));
-  if (typeof body.label !== "string" || body.label.trim().length < 2 || body.label.trim().length > 40) return NextResponse.json({ error: "Tag must be between 2 and 40 characters." }, { status: 400 });
-  await saveContextTag(body.label);
-  return NextResponse.json({ saved: true });
+  const parsed = contextTagSchema.safeParse(body.label);
+  if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Tag is invalid." }, { status: 400 });
+  if (defaultContextTags.some((tag) => tag.toLowerCase() === parsed.data.toLowerCase())) return NextResponse.json({ error: "That tag is already available." }, { status: 409 });
+  await saveContextTag(parsed.data);
+  return NextResponse.json({ saved: true, label: parsed.data });
 }
 
 export async function DELETE(request: Request) {
+  const rejected = rejectCrossOriginMutation(request);
+  if (rejected) return rejected;
   const sessionId = await ensureSession();
-  if (isRateLimited(`tags:${sessionId}`, 30)) return rateLimitResponse();
+  if (await isRateLimited(`tags:${sessionId}`, 30, { database: getDatabase() })) return rateLimitResponse();
   const label = new URL(request.url).searchParams.get("label");
-  if (!label) return NextResponse.json({ error: "Tag is required." }, { status: 400 });
-  await deleteContextTag(label);
+  const parsed = contextTagSchema.safeParse(label);
+  if (!parsed.success) return NextResponse.json({ error: "Tag is invalid." }, { status: 400 });
+  await deleteContextTag(parsed.data);
   return NextResponse.json({ deleted: true });
 }

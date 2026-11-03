@@ -1,32 +1,35 @@
 import { NextResponse } from "next/server";
-import { getSnapshot, saveSetup } from "@/lib/domain";
+import { deletePivot, updatePivot } from "@/lib/domain";
 import { pivotInputSchema } from "@/lib/schemas";
-import { ensureSession } from "@/lib/session";
+import { ensureSession, getDatabase } from "@/lib/session";
 import { isRateLimited, rateLimitResponse } from "@/lib/rate-limit";
+import { rejectCrossOriginMutation } from "@/lib/request-security";
 
 type RouteContext = { params: Promise<{ pivotId: string }> };
 
 export async function PATCH(request: Request, context: RouteContext) {
+  const rejected = rejectCrossOriginMutation(request);
+  if (rejected) return rejected;
   const sessionId = await ensureSession();
-  if (isRateLimited(`pivots:${sessionId}`, 30)) return rateLimitResponse();
+  if (await isRateLimited(`pivots:${sessionId}`, 30, { database: getDatabase() })) return rateLimitResponse();
   const { pivotId } = await context.params;
-  const snapshot = await getSnapshot();
-  if (!snapshot.pivots.some((pivot) => pivot.id === pivotId)) return NextResponse.json({ error: "Pivot not found." }, { status: 404 });
   const body = await request.json().catch(() => ({}));
   const parsed = pivotInputSchema.safeParse({ ...body, id: pivotId });
   if (!parsed.success) return NextResponse.json({ error: "A name and at least one action are required." }, { status: 400 });
-  const pivots = snapshot.pivots.map((pivot) => pivot.id === pivotId ? parsed.data : pivot);
-  await saveSetup(pivots.map((item) => item.goal), pivots.flatMap((item) => item.replacements), pivots);
+  const result = await updatePivot(parsed.data);
+  if (result === "not_found") return NextResponse.json({ error: "Pivot not found." }, { status: 404 });
+  if (result === "active") return NextResponse.json({ error: "Finish the active action before editing this pivot." }, { status: 409 });
   return NextResponse.json({ pivot: parsed.data });
 }
 
-export async function DELETE(_request: Request, context: RouteContext) {
+export async function DELETE(request: Request, context: RouteContext) {
+  const rejected = rejectCrossOriginMutation(request);
+  if (rejected) return rejected;
   const sessionId = await ensureSession();
-  if (isRateLimited(`pivots:${sessionId}`, 30)) return rateLimitResponse();
+  if (await isRateLimited(`pivots:${sessionId}`, 30, { database: getDatabase() })) return rateLimitResponse();
   const { pivotId } = await context.params;
-  const snapshot = await getSnapshot();
-  if (!snapshot.pivots.some((pivot) => pivot.id === pivotId)) return NextResponse.json({ error: "Pivot not found." }, { status: 404 });
-  const pivots = snapshot.pivots.filter((pivot) => pivot.id !== pivotId);
-  await saveSetup(pivots.map((item) => item.goal), pivots.flatMap((item) => item.replacements), pivots);
+  const result = await deletePivot(pivotId);
+  if (result === "not_found") return NextResponse.json({ error: "Pivot not found." }, { status: 404 });
+  if (result === "active") return NextResponse.json({ error: "Finish the active action before deleting this pivot." }, { status: 409 });
   return NextResponse.json({ deleted: true });
 }

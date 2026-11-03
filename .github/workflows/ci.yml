@@ -8,6 +8,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   # Fast, separately required check: the crisis phrase table and Gemini safety routing.
   # A regression here must never merge, so it runs on its own and fails loudly.
@@ -35,9 +39,13 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
+      - run: npm audit --omit=dev --audit-level=high
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
+      - run: npm run db:migrate
+        env:
+          TURSO_DATABASE_URL: file:./data/ci.db
       - run: npm run build
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e

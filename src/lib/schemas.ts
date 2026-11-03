@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+export const contextTagSchema = z.string().trim().min(2, "Tag must be at least 2 characters.").max(40, "Tag must be no more than 40 characters.");
+
 export const replacementInputSchema = z.object({
   id: z.string().regex(/^[a-z0-9-]{2,40}$/),
   name: z.string().trim().min(2).max(80),
@@ -32,13 +34,9 @@ export const recommendationInputSchema = z.object({
 });
 
 export const closedLoopInputSchema = z.object({
+  interventionId: z.string().uuid(),
   pivotId: z.string().regex(/^[a-z0-9-]{2,80}$/),
   replacementId: z.string().regex(/^[a-z0-9-]{2,40}$/),
-  intensity: z.number().int().min(1).max(10),
-  contextType: z.string().max(80).default(""),
-  reason: z.string().max(180).default(""),
-  firstStep: z.string().max(240).default(""),
-  source: z.enum(["gemini", "fallback"]),
   outcome: z.string().trim().min(1).max(120),
   helpful: z.boolean(),
 });
@@ -49,6 +47,8 @@ export const interventionInputSchema = z.object({
   reason: z.string().max(180).default(""),
   firstStep: z.string().max(240).default(""),
   source: z.enum(["gemini", "fallback"]).default("fallback"),
+  intensity: z.number().int().min(1).max(10),
+  contextType: z.string().max(80).default(""),
 });
 
 const analyticsPayloadSchema = z.object({

@@ -18,6 +18,7 @@ export function AppShell({
   activePivotId,
   onSelectPivot,
   pivotCounts,
+  pivotSelectionDisabled = false,
   newPivotHref = "/settings/pivots/new",
   utilityNav,
   focusMode = false,
@@ -29,6 +30,7 @@ export function AppShell({
   activePivotId?: string | null;
   onSelectPivot?: (id: string) => void;
   pivotCounts?: Record<string, number>;
+  pivotSelectionDisabled?: boolean;
   newPivotHref?: string;
   utilityNav: UtilityNavItem[];
   focusMode?: boolean;
@@ -49,15 +51,16 @@ export function AppShell({
 
   if (focusMode) {
     return (
-      <main className="app-shell">
+      <div className="app-shell">
+        <a className="skip-link" href="#main-content">Skip to main content</a>
         <div className="focus-frame">
           <div className="focus-topbar">
             <span className="brand"><Logo /><span>pivot</span></span>
             {focusLabel && <span className="focus-mode-label">{focusLabel}</span>}
           </div>
-          <div className="focus-content">{children}</div>
+          <main className="focus-content" id="main-content" tabIndex={-1}>{children}</main>
         </div>
-      </main>
+      </div>
     );
   }
 
@@ -76,7 +79,7 @@ export function AppShell({
     );
     if (onSelectPivot) {
       return (
-        <button type="button" key={pivot.id} className={`${className} ${on ? "on" : ""}`} aria-current={on ? "true" : undefined} onClick={() => onSelectPivot(pivot.id)}>
+        <button type="button" key={pivot.id} className={`${className} ${on ? "on" : ""}`} aria-current={on ? "true" : undefined} disabled={pivotSelectionDisabled} onClick={() => onSelectPivot(pivot.id)}>
           {inner}
         </button>
       );
@@ -101,9 +104,10 @@ export function AppShell({
   }
 
   return (
-    <main className="app-shell">
+    <div className="app-shell">
+      <a className="skip-link" href="#main-content">Skip to main content</a>
       <div className={`shell ${rightRail ? "has-rail" : ""}`}>
-        <aside className="shell-sidebar">
+        <aside className="shell-sidebar" aria-label="Application sidebar">
           <Link className="brand shell-brand" href="/"><Logo /><span>pivot</span></Link>
 
           <div className="shell-pivots">
@@ -116,13 +120,14 @@ export function AppShell({
             {utilityNav.map((item) => renderUtil(item, "shell-util-item"))}
           </nav>
 
-          <Link className="shell-account" href="/settings" aria-label="Account and settings">
+          <Link className="shell-account" href="/settings">
             <span className="shell-account-av" aria-hidden="true"><Icon name="account" size={17} /></span>
             <span className="shell-account-who">
               <strong>{authed ? `@${login}` : "You"}</strong>
               <span>{authed ? "Synced across devices" : "Anonymous"}</span>
             </span>
             <span className="shell-account-badge">{authed ? "SYNCED" : "LOCAL"}</span>
+            <span className="sr-only">Account and settings</span>
           </Link>
         </aside>
 
@@ -136,15 +141,17 @@ export function AppShell({
               <Link className="pivot-pill pivot-pill-add" href={newPivotHref}><Icon name="plus" size={14} /> New</Link>
             </div>
           )}
-          <div className="shell-content">{children}<SafetyFooter /></div>
+          <main className="shell-content" id="main-content" tabIndex={-1}>{children}</main>
         </div>
 
-        {rightRail && <aside className="shell-rail">{rightRail}</aside>}
+        {rightRail && <aside className="shell-rail" aria-label="Pivot summary">{rightRail}</aside>}
+
+        <SafetyFooter />
 
         <nav className="shell-tabbar" aria-label="Mobile navigation">
           {utilityNav.map((item) => renderUtil(item, "shell-tab"))}
         </nav>
       </div>
-    </main>
+    </div>
   );
 }

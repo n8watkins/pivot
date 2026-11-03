@@ -3,6 +3,9 @@ import { afterEach, describe, expect, it } from "vitest";
 import { migrate } from "./migrations";
 import { linkGitHubAccount } from "./account";
 
+const validP256dh = Buffer.concat([Buffer.from([4]), Buffer.alloc(64, 9)]).toString("base64url");
+const validAuth = Buffer.alloc(16, 3).toString("base64url");
+
 const clients: ReturnType<typeof createClient>[] = [];
 
 async function createTestDatabase() {
@@ -24,6 +27,9 @@ describe("GitHub account linking", () => {
     await db.execute("INSERT INTO pivots (id, session_id, label, created_at) VALUES ('second-pivot', 'second-session', 'Evening snacks', '2026-01-02')");
 
     const firstLink = await linkGitHubAccount(db, "first-session", { id: "github-123", login: "pivot-user", avatarUrl: null });
+    await db.execute("INSERT INTO notification_preferences (session_id, cadence, timezone, updated_at) VALUES ('first-session', 'weekly', 'UTC', '2026-01-01')");
+    await db.execute("INSERT INTO notification_preferences (session_id, cadence, timezone, updated_at) VALUES ('second-session', 'monthly', 'America/Los_Angeles', '2026-01-03')");
+    await db.execute({ sql: "INSERT INTO push_subscriptions (id, session_id, endpoint, p256dh, auth, created_at, updated_at) VALUES ('second-subscription', 'second-session', 'https://push.example.test/second', ?, ?, '2026-01-02', '2026-01-02')", args: [validP256dh, validAuth] });
     const secondLink = await linkGitHubAccount(db, "second-session", { id: "github-123", login: "renamed-user", avatarUrl: "https://avatars.githubusercontent.com/u/123" });
 
     expect(firstLink.sessionId).toBe("first-session");
@@ -34,6 +40,10 @@ describe("GitHub account linking", () => {
     expect(discardedSession.rows).toHaveLength(0);
     const account = await db.execute({ sql: "SELECT login, avatar_url as avatarUrl FROM accounts WHERE id = ?", args: [firstLink.accountId] });
     expect(account.rows[0]).toMatchObject({ login: "renamed-user", avatarUrl: "https://avatars.githubusercontent.com/u/123" });
+    const preference = await db.execute("SELECT session_id as sessionId, cadence, timezone FROM notification_preferences");
+    expect(preference.rows).toEqual([expect.objectContaining({ sessionId: "first-session", cadence: "monthly", timezone: "America/Los_Angeles" })]);
+    const subscription = await db.execute("SELECT session_id as sessionId FROM push_subscriptions WHERE id = 'second-subscription'");
+    expect(subscription.rows[0]?.sessionId).toBe("first-session");
   });
 
   it("does not attach one GitHub identity to another identity's data", async () => {

@@ -1,3 +1,5 @@
+import { getNotificationServerConfiguration } from "./notifications";
+
 type RuntimeEnvironment = Record<string, string | undefined>;
 
 export function getRuntimeCapabilities(environment: RuntimeEnvironment = process.env) {
@@ -7,12 +9,16 @@ export function getRuntimeCapabilities(environment: RuntimeEnvironment = process
   const authPartiallyConfigured = authValues.some(Boolean) && !authConfigured;
   const persistence = !databaseUrl ? "memory" : databaseUrl.startsWith("file:") ? "sqlite" : "turso";
   const persistentStorageRequired = environment.NODE_ENV === "production" && environment.ALLOW_IN_MEMORY_PERSISTENCE !== "true";
+  const geminiRecommendationsEnabled = environment.ENABLE_GEMINI_RECOMMENDATIONS === "true" && Boolean(environment.GEMINI_API_KEY);
+  const notificationsConfigured = getNotificationServerConfiguration(environment).configured;
 
   return {
     persistence,
     persistentStorageReady: persistence !== "memory" || !persistentStorageRequired,
-    recommendations: environment.GEMINI_API_KEY ? "gemini-with-fallback" : "deterministic-fallback",
+    recommendations: geminiRecommendationsEnabled ? "gemini-with-fallback" : "deterministic-fallback",
     accounts: authConfigured ? "github-optional" : "anonymous-only",
+    notifications: notificationsConfigured ? "web-push" : "off",
+    notificationScheduler: notificationsConfigured && environment.CRON_SECRET ? "ready" : "off",
     authPartiallyConfigured,
   } as const;
 }

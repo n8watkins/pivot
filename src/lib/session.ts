@@ -8,6 +8,7 @@ import { getRuntimeCapabilities } from "./config";
 
 export const SESSION_COOKIE = "pivot_session";
 let client: Client | null = null;
+let initialization: Promise<void> | null = null;
 const memorySessions = new Map<string, { id: string; createdAt: string }>();
 const memoryEvents = new Map<string, { id: string; sessionId: string; type: string; payload: string }>();
 
@@ -20,7 +21,11 @@ export function getDatabase() {
 export async function initializeDatabase() {
   const db = getDatabase();
   if (!db) return;
-  await migrate(db);
+  initialization ??= migrate(db).catch((error) => {
+    initialization = null;
+    throw error;
+  });
+  await initialization;
 }
 
 export async function ensureSession() {
@@ -87,6 +92,10 @@ export async function deleteSession() {
       "DELETE FROM pivots WHERE session_id = ?",
       "DELETE FROM context_tags WHERE session_id = ?",
       "DELETE FROM privacy_events WHERE session_id = ?",
+      "DELETE FROM notification_deliveries WHERE subscription_id IN (SELECT id FROM push_subscriptions WHERE session_id = ?)",
+      "DELETE FROM push_subscriptions WHERE session_id = ?",
+      "DELETE FROM notification_preferences WHERE session_id = ?",
+      "DELETE FROM rate_limits WHERE key LIKE '%:' || ?",
       "DELETE FROM accounts WHERE canonical_session_id = ?",
       "DELETE FROM anonymous_sessions WHERE id = ?",
     ].map((sql) => ({ sql, args: [id] })), "write");

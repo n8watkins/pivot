@@ -62,7 +62,7 @@ export default function Onboarding() {
           <Link className="brand" href="/"><Logo /><span>pivot</span></Link>
           <span className="quiet">Private by design</span>
         </div>
-        <Progress step={1} />
+        <Progress step={1} label="Setup progress" />
         <div className="setup-copy">
           <p className="eyebrow">Make space for a different next step</p>
           <h1>What would you like to pivot away from?</h1>

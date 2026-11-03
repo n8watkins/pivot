@@ -3,7 +3,7 @@
 :root {
   --ink: #26302b;
   --ink-soft: #53615a;
-  --muted: #6a756d;
+  --muted: #667168;
   --paper: #f5f7f2;
   --card: #ffffff;
   --line: #e1e6de;
@@ -12,7 +12,7 @@
   --deep-sage: #4d6d5a;
   --deep-sage-hover: #3d5d4b;
   --coral: #e88b70;
-  --coral-strong: #d9704f;
+  --coral-strong: #a94b2b;
   --coral-ink: #3f2a22;
   --sage-tint: #e9f1e7;
   --sage-tint-2: #eef4ec;
@@ -50,6 +50,28 @@ body {
   letter-spacing: -.005em;
 }
 
+@media (display-mode: standalone) {
+  html,
+  body {
+    overscroll-behavior-y: none;
+  }
+
+  body {
+    min-height: 100dvh;
+  }
+
+  .app-shell,
+  .shell,
+  .focus-frame,
+  .setup-wrap {
+    min-height: 100dvh;
+  }
+
+  .shell-body {
+    padding-top: max(20px, env(safe-area-inset-top));
+  }
+}
+
 button,
 input,
 textarea {
@@ -76,6 +98,41 @@ textarea {
   outline-offset: 3px;
 }
 
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.skip-link {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  z-index: 100;
+  border-radius: 10px;
+  background: var(--ink);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  padding: 11px 14px;
+  text-decoration: none;
+  transform: translateY(-160%);
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+}
+
+#main-content:focus {
+  outline: none;
+}
+
 /* ============================================================
    App shell
    ============================================================ */
@@ -95,7 +152,13 @@ textarea {
 
 .shell-body {
   min-width: 0;
-  padding: 20px max(20px, env(safe-area-inset-right)) calc(88px + env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
+  padding: 20px max(20px, env(safe-area-inset-right)) 8px max(20px, env(safe-area-inset-left));
+}
+
+/* The safety footer is the last thing in the shell and clears the fixed phone tab bar. */
+.shell > .safety-footer {
+  margin: 24px max(20px, calc((100% - 560px) / 2)) 0;
+  padding-bottom: calc(88px + env(safe-area-inset-bottom));
 }
 
 .shell-content {
@@ -139,7 +202,7 @@ textarea {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  min-height: 38px;
+  min-height: 44px;
   border: 1px solid var(--line);
   border-radius: 999px;
   background: var(--card);
@@ -155,6 +218,12 @@ textarea {
   border-color: var(--deep-sage);
   background: var(--sage-tint);
   color: var(--deep-sage);
+}
+
+.pivot-pill:disabled,
+.pivot-rail-item:disabled {
+  cursor: wait;
+  opacity: .55;
 }
 
 .pivot-pill .pv-name {
@@ -403,8 +472,8 @@ h1 {
 
 .icon-button {
   display: grid;
-  width: 42px;
-  height: 42px;
+  width: 44px;
+  height: 44px;
   place-items: center;
   border: 1px solid var(--line);
   border-radius: 11px;
@@ -432,7 +501,7 @@ h1 {
 }
 
 .danger-button:hover:not(:disabled) {
-  color: #b8542f;
+  color: #8f3e24;
 }
 
 /* ============================================================
@@ -467,7 +536,7 @@ h1 {
 }
 
 .text-input::placeholder {
-  color: #9aa49b;
+  color: #6c766e;
 }
 
 .text-input:focus {
@@ -519,6 +588,8 @@ h1 {
 
 .goal-pill button {
   display: grid;
+  width: 44px;
+  height: 44px;
   place-items: center;
   border: 0;
   background: none;
@@ -535,7 +606,7 @@ h1 {
 }
 
 .chip {
-  min-height: 42px;
+  min-height: 44px;
   border: 1px solid var(--line);
   border-radius: 999px;
   background: var(--card);
@@ -707,7 +778,7 @@ h1 {
 
 .urge-button small {
   margin-top: 4px;
-  color: #6d453a;
+  color: var(--coral-ink);
   font-size: 13px;
 }
 
@@ -724,7 +795,7 @@ h1 {
 
 .urge-button .arrow {
   margin-left: auto;
-  color: #7a4536;
+  color: var(--coral-ink);
   display: grid;
   place-items: center;
 }
@@ -734,6 +805,7 @@ h1 {
   align-items: center;
   gap: 6px;
   margin-top: 6px;
+  min-height: 44px;
   color: var(--deep-sage);
   font-size: 15px;
   font-weight: 700;
@@ -1115,7 +1187,7 @@ h1 {
 }
 
 .history-filters button {
-  min-height: 36px;
+  min-height: 44px;
   border: 1px solid var(--line);
   border-radius: 999px;
   background: var(--card);
@@ -1205,8 +1277,8 @@ h1 {
 
 .history-delete {
   display: grid;
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   place-items: center;
   border: 0;
   background: none;
@@ -1657,7 +1729,7 @@ h1 {
 }
 
 .settings-add {
-  min-height: 40px;
+  min-height: 44px;
   font-size: 12px;
   padding: 0 14px;
 }
@@ -1667,6 +1739,195 @@ h1 {
   color: var(--muted);
   font-size: 13px;
   line-height: 1.55;
+}
+
+.install-instructions {
+  margin-top: 16px;
+  border-radius: var(--radius-sm);
+  background: var(--sage-tint-2);
+  color: var(--ink-soft);
+  font-size: 13px;
+  line-height: 1.55;
+  padding: 16px;
+}
+
+.install-instructions strong {
+  color: var(--ink);
+}
+
+.install-instructions ol {
+  margin: 10px 0 0;
+  padding-left: 20px;
+}
+
+.install-instructions li + li {
+  margin-top: 5px;
+}
+
+.install-instructions span {
+  color: var(--deep-sage);
+  font-weight: 700;
+}
+
+.install-section .form-status,
+.install-section .success-status {
+  margin: 14px 0 0;
+}
+
+.notification-options {
+  display: grid;
+  gap: 9px;
+  margin: 0;
+  border: 0;
+  padding: 0;
+}
+
+.notification-options label {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  align-items: center;
+  gap: 11px;
+  min-height: 58px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--card);
+  cursor: pointer;
+  padding: 10px 13px;
+}
+
+.notification-options label.selected {
+  border-color: var(--deep-sage);
+  background: var(--sage-tint-2);
+}
+
+.notification-options label.unavailable {
+  cursor: not-allowed;
+  opacity: .5;
+}
+
+.notification-options input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--deep-sage);
+}
+
+.notification-options strong,
+.notification-options small {
+  display: block;
+}
+
+.notification-options strong {
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.notification-options small {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.notification-privacy {
+  margin: 14px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.notification-section .hint,
+.notification-section .form-status,
+.notification-section .success-status {
+  margin: 14px 0 0;
+}
+
+.pwa-update {
+  position: fixed;
+  right: max(16px, env(safe-area-inset-right));
+  bottom: max(16px, calc(env(safe-area-inset-bottom) + 16px));
+  left: max(16px, env(safe-area-inset-left));
+  z-index: 90;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 12px;
+  width: min(560px, calc(100% - 32px));
+  margin-left: auto;
+  border: 1px solid #d6e2d6;
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, .97);
+  box-shadow: var(--shadow-lg);
+  padding: 14px;
+}
+
+.pwa-update strong,
+.pwa-update span {
+  display: block;
+}
+
+.pwa-update strong {
+  font-size: 13px;
+}
+
+.pwa-update span {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.pwa-update button {
+  min-height: 44px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--deep-sage);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 0 14px;
+}
+
+.pwa-update .pwa-update-dismiss {
+  background: transparent;
+  color: var(--muted);
+}
+
+.offline-page {
+  display: grid;
+  align-content: center;
+  gap: 28px;
+  width: min(100% - 40px, 620px);
+  min-height: 100svh;
+  margin: 0 auto;
+  padding: max(28px, env(safe-area-inset-top)) 0 max(28px, env(safe-area-inset-bottom));
+}
+
+.offline-card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--card);
+  box-shadow: var(--shadow-md);
+  padding: clamp(24px, 7vw, 42px);
+}
+
+.offline-card h1 {
+  font-size: clamp(30px, 7vw, 44px);
+}
+
+.offline-card .primary-button {
+  width: fit-content;
+  margin-top: 28px;
+}
+
+@media (max-width: 520px) {
+  .pwa-update {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .pwa-update .pwa-update-dismiss {
+    grid-column: 1 / -1;
+    min-height: 32px;
+  }
 }
 
 .settings-list {
@@ -1696,6 +1957,11 @@ h1 {
 }
 
 .settings-pivot a {
+  display: inline-flex;
+  min-width: 44px;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
   color: var(--deep-sage);
   font-size: 13px;
   font-weight: 700;
@@ -1707,6 +1973,7 @@ h1 {
   align-items: center;
   gap: 6px;
   margin-top: 16px;
+  min-height: 44px;
   color: var(--deep-sage);
   font-size: 13px;
   font-weight: 700;
@@ -1758,8 +2025,8 @@ h1 {
 
 .action-controls button {
   display: grid;
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   place-items: center;
   border: 1px solid var(--line);
   border-radius: 10px;
@@ -1780,6 +2047,16 @@ h1 {
    Desktop layout (>= 900px)
    ============================================================ */
 
+@media (max-width: 899px) {
+  .shell.has-rail .shell-body {
+    padding-bottom: 20px;
+  }
+
+  .shell.has-rail .shell-rail {
+    padding-bottom: 8px;
+  }
+}
+
 @media (min-width: 900px) {
   .app-shell {
     background:
@@ -1797,6 +2074,20 @@ h1 {
 
   .shell.has-rail {
     grid-template-columns: var(--sidebar-w) minmax(0, 1fr) var(--rail-w);
+  }
+
+  .shell-sidebar,
+  .shell-rail {
+    grid-row: 1 / span 2;
+  }
+
+  .shell > .safety-footer {
+    grid-column: 2;
+    grid-row: 2;
+    align-self: end;
+    width: min(560px, calc(100% - 2 * clamp(28px, 4vw, 56px)));
+    margin: 0 auto;
+    padding-bottom: 32px;
   }
 
   .shell-sidebar {
@@ -1840,6 +2131,7 @@ h1 {
     display: flex;
     align-items: center;
     gap: 10px;
+    min-height: 44px;
     width: 100%;
     border: 0;
     border-left: 3px solid transparent;
@@ -1870,7 +2162,7 @@ h1 {
   }
 
   .pivot-rail-item .pv-count {
-    color: #98a29a;
+    color: var(--ink-soft);
     font-size: 11px;
     font-variant-numeric: tabular-nums;
   }
@@ -1901,6 +2193,7 @@ h1 {
     display: flex;
     align-items: center;
     gap: 9px;
+    min-height: 44px;
     margin-top: 6px;
     border: 1px dashed #cdd9cc;
     border-radius: 11px;
@@ -1928,6 +2221,7 @@ h1 {
     display: flex;
     align-items: center;
     gap: 11px;
+    min-height: 44px;
     width: 100%;
     border: 0;
     border-radius: 10px;
@@ -2057,18 +2351,20 @@ h1 {
     max-width: 1000px;
   }
 
-  .settings-layout {
-    grid-template-columns: minmax(0, 1.1fr) minmax(300px, .9fr);
-    align-items: start;
-    gap: 18px;
-    margin-top: 30px;
-  }
-
   .settings-main-column,
   .settings-side-column {
     display: grid;
     align-content: start;
     gap: 18px;
+  }
+}
+
+@media (min-width: 1000px) {
+  .settings-layout {
+    grid-template-columns: minmax(0, 1.1fr) minmax(300px, .9fr);
+    align-items: start;
+    gap: 18px;
+    margin-top: 30px;
   }
 }
 

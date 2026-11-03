@@ -10,12 +10,14 @@ It supports any everyday habit, keeps each habit and its replacement actions in 
 - Reusable built-in and custom context tags.
 - Optional one-time context notes that are sent for recommendation and never stored.
 - Deterministic recommendation ranking based on recent helpful and unhelpful outcomes.
-- Optional Gemini structured recommendations with deterministic fallback.
+- Deterministic recommendations by default, with the Gemini adapter retained behind an explicit release flag.
 - Active-action refresh recovery and a duration countdown.
 - Follow-up for current urge, lapse outcome, and explicit helpfulness.
 - Pivot-aware History with event deletion and preserved labels after pivot deletion.
 - JSON data export and complete account or anonymous-session deletion.
 - Optional GitHub sign-in that upgrades and merges an existing anonymous session.
+- Installable Android PWA metadata, maskable icons, standalone safe areas, update prompting, and a privacy-safe offline shell.
+- Optional weekly or monthly Web Push check-ins that remain off until the user grants permission.
 - Crisis routing before normal recommendations: suicide, self-harm, wanting to die, overdose, or danger-to-others language (typos and slang included), or any Gemini safety signal, shows call/text/chat 988, findahelpline.com, and local emergency numbers instead of a habit suggestion.
   The check runs on the device first and again on the server, so it never depends on the network.
 - Unsupported clinical-category routing to specialized support.
@@ -45,7 +47,8 @@ npm run dev:sqlite
 
 Open [http://localhost:3000](http://localhost:3000).
 The local database is created at `data/pivot.db`, which is excluded from Git.
-The app applies schema migrations automatically.
+The app applies idempotent schema migrations automatically for local convenience.
+Production releases should run `npm run db:migrate` before promotion.
 
 Use the production build locally with the same SQLite database when checking deployment behavior.
 
@@ -67,10 +70,15 @@ Copy `.env.example` to `.env.local` and set only the capabilities you want to en
 | --- | --- | --- |
 | `TURSO_DATABASE_URL` | Production | Remote Turso URL or local `file:` URL. |
 | `TURSO_AUTH_TOKEN` | Remote Turso | Authenticates the remote database client. |
-| `GEMINI_API_KEY` | No | Enables Gemini recommendations while retaining deterministic fallback. |
+| `ENABLE_GEMINI_RECOMMENDATIONS` | No | Must be `true` before Pivot can call Gemini. Defaults to deterministic recommendations. |
+| `GEMINI_API_KEY` | No | Provides Gemini credentials but does not enable model calls by itself. |
 | `AUTH_SECRET` | GitHub sign-in | Encrypts Auth.js cookies and tokens. |
 | `AUTH_GITHUB_ID` | GitHub sign-in | GitHub OAuth application client ID. |
 | `AUTH_GITHUB_SECRET` | GitHub sign-in | GitHub OAuth application client secret. |
+| `WEB_PUSH_VAPID_PUBLIC_KEY` | Notifications | Public browser subscription key from a single persistent VAPID key pair. |
+| `WEB_PUSH_VAPID_PRIVATE_KEY` | Notifications | Private VAPID key stored as a sensitive Vercel variable. |
+| `WEB_PUSH_SUBJECT` | Notifications | A `mailto:` or HTTPS contact identifier for the push provider. |
+| `CRON_SECRET` | Notifications | Protects the hourly notification scheduler route. |
 | `COOKIE_SECURE` | Local production only | Set to `false` for local HTTP testing. |
 
 Generate an Auth.js secret with this command.
@@ -97,16 +105,49 @@ Signing out rotates the browser to a fresh anonymous session so connected accoun
 ## Recommendation behavior
 
 The server validates every replacement against the selected pivot before starting or recording an intervention.
+Pivot uses deterministic ranking unless both `ENABLE_GEMINI_RECOMMENDATIONS=true` and `GEMINI_API_KEY` are configured.
 Gemini must return structured JSON containing an approved replacement ID, a concise reason, a concrete first step, up to two approved alternatives, and a safety status.
 Malformed, delayed, unsafe, unapproved, or empty model output is discarded.
 Missing credentials and provider failures use the same deterministic ranking path.
 
 Free-text context is capped, used only for the immediate recommendation and safety route, and not written to the database, History, export, or routine analytics events.
 
+## Android installation and check-ins
+
+Chrome on Android can install Pivot directly from the browser when the site is served over HTTPS.
+The installed app uses a standalone layout, Android-safe viewport insets, a network-first app shell, and an offline fallback.
+The service worker never caches API routes, authentication, account data, exports, or other user-specific responses.
+
+Notification controls are in Settings and default to off.
+Weekly check-ins are due Monday during the recipient's local 9 AM hour, and monthly check-ins are due on the first day of the month during the local 9 AM hour.
+The hourly scheduler supports timezones with partial-hour UTC offsets and uses a unique delivery claim so retries cannot duplicate a cadence period.
+Push payloads contain only a delivery tag and a safe in-app URL.
+The visible message is always `Your Pivot check-in is ready.` and never includes a habit name, urge context, or note.
+
+Generate one VAPID key pair and keep it stable for the lifetime of existing browser subscriptions.
+
+```bash
+npx web-push generate-vapid-keys
+```
+
+Set the public key normally and protect the private key and cron secret with Vercel's sensitive-variable option.
+
+```bash
+vercel env add WEB_PUSH_VAPID_PUBLIC_KEY production
+vercel env add WEB_PUSH_VAPID_PRIVATE_KEY production --sensitive
+vercel env add WEB_PUSH_SUBJECT production
+vercel env add CRON_SECRET production --sensitive
+```
+
+The `Notification check-ins` GitHub Actions workflow invokes `/api/cron/notifications` hourly, because the Vercel Hobby plan only allows daily crons.
+Set the same `CRON_SECRET` value as a repository secret (`gh secret set CRON_SECRET`) to turn it on; without it the workflow does nothing.
+The workflow sends `CRON_SECRET` as a bearer token, and the route rejects every request without an exact match.
+Set the `PIVOT_URL` repository variable if the production URL changes.
+
 ## Privacy and safety
 
 Settings provides event-level History deletion, full JSON export, and complete data deletion.
-Deleting all data removes pivots, actions, interventions, follow-ups, privacy events, the anonymous session, and a connected Pivot account link.
+Deleting all data removes pivots, actions, interventions, follow-ups, privacy events, rate-limit records owned by the anonymous session, the anonymous session, and a connected Pivot account link.
 Custom context tags are stored because the user explicitly creates them for reuse.
 One-time context notes are not stored.
 
@@ -124,8 +165,12 @@ A partial GitHub configuration returns HTTP 503 with `status: "degraded"`.
 Database initialization failure or missing production persistence returns HTTP 503 with `status: "unavailable"`.
 
 Security headers include a restrictive content security policy, frame denial, MIME sniffing protection, a strict referrer policy, and disabled camera, microphone, and geolocation permissions.
-Mutation routes use per-session request limits.
-For a larger public release, replace the process-local limiter with a distributed limiter and connect structured error reporting before increasing traffic.
+Mutation routes use database-backed per-session request limits that remain consistent across application instances.
+Browser mutations reject mismatched origins, and sensitive state responses are marked as non-cacheable.
+Connect structured error reporting before increasing public traffic.
+
+The production checklist and operational runbooks are in [`docs/production-readiness.md`](docs/production-readiness.md).
+The complete step-by-step launch walkthrough is in [`docs/production-launch-checklist.md`](docs/production-launch-checklist.md).
 
 ## Verification
 
@@ -141,12 +186,17 @@ npm run test:e2e
 
 Playwright starts the production build on port 3101 against an isolated `data/pivot-e2e.db` database.
 It never reuses the manual-testing server or `data/pivot.db`.
+The suite uses one worker because every browser test intentionally shares that single isolated SQLite server.
+Legacy API-mocking flows block service workers, while the dedicated PWA suite enables them for install, update, and offline verification.
 The GitHub workflow runs the same gates on pushes to `main` and pull requests.
 
 ## Deploy to Vercel
 
 Create a Turso database and set `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` in the Vercel project before the first production request.
-Add `GEMINI_API_KEY` only when model-backed recommendations are ready.
+Migrations run automatically on the first request after a deploy; `npm run db:migrate` runs them ahead of time.
+Set the four Web Push variables described above, then the `CRON_SECRET` repository secret, to turn on check-ins.
+Leave `ENABLE_GEMINI_RECOMMENDATIONS=false` until model-backed recommendations are intentionally released.
+Add `GEMINI_API_KEY` and enable the release flag together when that later capability is ready.
 Add all three Auth.js and GitHub variables together when GitHub sign-in is ready.
 Configure the production GitHub OAuth callback as `https://YOUR_DOMAIN/api/auth/callback/github`.
 
