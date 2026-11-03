@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { deterministicFallback, hasHighRiskContext, hasUnsupportedContext, parseRecommendation, rankReplacements } from "./recommendation";
+import { deterministicFallback, hasHighRiskContext, hasUnsupportedContext, interpretGeminiPayload, parseRecommendation, rankReplacements } from "./recommendation";
 import { fallbackFirstStep } from "./replacement-copy";
 
 const options = [
@@ -37,5 +37,38 @@ describe("recommendation safety and fallback", () => {
     expect(parseRecommendation({}, options)).toBeNull();
     expect(parseRecommendation({ replacementId: "walk", reason: "x", firstStep: "x", alternatives: [], safety: "blocked" }, options)).toBeNull();
     expect(parseRecommendation({ replacementId: "unknown", reason: "x", firstStep: "x", alternatives: [], safety: "safe" }, options)).toBeNull();
+  });
+});
+
+describe("Gemini safety signal", () => {
+  const geminiText = (value: unknown) => ({ candidates: [{ content: { parts: [{ text: JSON.stringify(value) }] } }] });
+  const safe = { replacementId: "breathe", reason: "Quiet fit.", firstStep: "Sit down.", alternatives: ["walk"], safety: "safe" };
+
+  it("uses a safe, approved structured recommendation", () => {
+    expect(interpretGeminiPayload(geminiText(safe), options)).toEqual({ kind: "recommendation", recommendation: safe });
+  });
+
+  it.each(["review", "blocked"])("routes to support when Gemini flags the note as %s", (safety) => {
+    expect(interpretGeminiPayload(geminiText({ ...safe, safety }), options)).toEqual({ kind: "support" });
+    expect(interpretGeminiPayload(geminiText({ safety }), options)).toEqual({ kind: "support" });
+  });
+
+  it.each(["REVIEW", " Blocked ", "unsafe", "", null, 0])("routes to support for any non-safe safety value %j", (safety) => {
+    expect(interpretGeminiPayload(geminiText({ ...safe, safety }), options)).toEqual({ kind: "support" });
+  });
+
+  it("routes to support when Gemini blocks the prompt or stops for safety", () => {
+    expect(interpretGeminiPayload({ promptFeedback: { blockReason: "SAFETY" } }, options)).toEqual({ kind: "support" });
+    expect(interpretGeminiPayload({ promptFeedback: { safetyRatings: [{ blocked: true }] } }, options)).toEqual({ kind: "support" });
+    for (const finishReason of ["SAFETY", "BLOCKLIST", "PROHIBITED_CONTENT", "SPII"]) {
+      expect(interpretGeminiPayload({ candidates: [{ finishReason }] }, options)).toEqual({ kind: "support" });
+    }
+    expect(interpretGeminiPayload({ candidates: [{ finishReason: "STOP", safetyRatings: [{ blocked: true }], content: { parts: [{ text: JSON.stringify(safe) }] } }] }, options)).toEqual({ kind: "support" });
+  });
+
+  it("falls back quietly on malformed or unapproved output", () => {
+    expect(interpretGeminiPayload(null, options)).toEqual({ kind: "none" });
+    expect(interpretGeminiPayload({ candidates: [{ content: { parts: [{ text: "not json" }] } }] }, options)).toEqual({ kind: "none" });
+    expect(interpretGeminiPayload(geminiText({ ...safe, replacementId: "unknown" }), options)).toEqual({ kind: "none" });
   });
 });

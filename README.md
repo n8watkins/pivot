@@ -18,7 +18,10 @@ It supports any everyday habit, keeps each habit and its replacement actions in 
 - Optional GitHub sign-in that upgrades and merges an existing anonymous session.
 - Installable Android PWA metadata, maskable icons, standalone safe areas, update prompting, and a privacy-safe offline shell.
 - Optional weekly or monthly Web Push check-ins that remain off until the user grants permission.
-- High-risk and unsupported clinical-category routing before normal recommendations.
+- Crisis routing before normal recommendations: suicide, self-harm, wanting to die, overdose, or danger-to-others language (typos and slang included), or any Gemini safety signal, shows call/text/chat 988, findahelpline.com, and local emergency numbers instead of a habit suggestion.
+  The check runs on the device first and again on the server, so it never depends on the network.
+- Unsupported clinical-category routing to specialized support.
+- Short privacy and terms pages at `/privacy` and `/terms`, linked from onboarding, Settings, and the note field.
 
 Pivot is not medical care, crisis care, or a substitute for a qualified professional.
 Realtime voice is intentionally outside this release.
@@ -136,8 +139,10 @@ vercel env add WEB_PUSH_SUBJECT production
 vercel env add CRON_SECRET production --sensitive
 ```
 
-The `vercel.json` schedule invokes `/api/cron/notifications` hourly in production.
-Vercel sends `CRON_SECRET` as a bearer token, and the route rejects every request without an exact match.
+The `Notification check-ins` GitHub Actions workflow invokes `/api/cron/notifications` hourly, because the Vercel Hobby plan only allows daily crons.
+Set the same `CRON_SECRET` value as a repository secret (`gh secret set CRON_SECRET`) to turn it on; without it the workflow does nothing.
+The workflow sends `CRON_SECRET` as a bearer token, and the route rejects every request without an exact match.
+Set the `PIVOT_URL` repository variable if the production URL changes.
 
 ## Privacy and safety
 
@@ -149,6 +154,8 @@ One-time context notes are not stored.
 High-risk language routes away from habit recommendations and directs users in the United States or Canada to call or text 988.
 Unsupported clinical categories route to specialized professional support.
 The safety matcher is a conservative product boundary, not a clinical assessment system.
+It lives in `src/lib/crisis.ts` and errs toward showing resources: negations such as "I'm not suicidal" still show them, and only clear everyday idioms are excluded.
+Every phrase it must catch or ignore is listed in `src/lib/crisis.test.ts`, which CI runs as its own required "Crisis safety tests" check.
 
 ## Health and operations
 
@@ -186,7 +193,8 @@ The GitHub workflow runs the same gates on pushes to `main` and pull requests.
 ## Deploy to Vercel
 
 Create a Turso database and set `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` in the Vercel project before the first production request.
-Run the notification migration before enabling the hourly cron, then set the four Web Push variables described above.
+Migrations run automatically on the first request after a deploy; `npm run db:migrate` runs them ahead of time.
+Set the four Web Push variables described above, then the `CRON_SECRET` repository secret, to turn on check-ins.
 Leave `ENABLE_GEMINI_RECOMMENDATIONS=false` until model-backed recommendations are intentionally released.
 Add `GEMINI_API_KEY` and enable the release flag together when that later capability is ready.
 Add all three Auth.js and GitHub variables together when GitHub sign-in is ready.

@@ -119,13 +119,14 @@ export function AppShell({
             {utilityNav.map((item) => renderUtil(item, "shell-util-item"))}
           </nav>
 
-          <Link className="shell-account" href="/settings" aria-label="Account and settings">
+          <Link className="shell-account" href="/settings">
             <span className="shell-account-av" aria-hidden="true"><Icon name="account" size={17} /></span>
             <span className="shell-account-who">
               <strong>{authed ? `@${login}` : "You"}</strong>
               <span>{authed ? "Synced across devices" : "Anonymous"}</span>
             </span>
             <span className="shell-account-badge">{authed ? "SYNCED" : "LOCAL"}</span>
+            <span className="sr-only">Account and settings</span>
           </Link>
         </aside>
 

@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { signIn, signOut } from "next-auth/react";
 import { AppShell, type UtilityNavItem } from "@/components/pivot/app-shell";
 import { InstallPivot } from "@/components/pivot/install-pivot";
 import { NotificationSettings } from "@/components/pivot/notification-settings";
+import { LegalLinks } from "@/components/pivot/legal-page";
 import { Icon } from "@/components/pivot/ui";
 import { unsubscribeCurrentPushSubscription } from "@/lib/push-client";
 
@@ -20,6 +22,7 @@ const utilityNav: UtilityNavItem[] = [
 ];
 
 export default function SettingsPage() {
+  const router = useRouter();
   const [pivots, setPivots] = useState<Pivot[]>([]);
   const [pivotCounts, setPivotCounts] = useState<Record<string, number>>({});
   const [contextTags, setContextTags] = useState<string[]>([]);
@@ -38,7 +41,7 @@ export default function SettingsPage() {
   async function deleteData() {
     if (!window.confirm(`Delete your pivots, history, and ${account.authenticated ? "connected Pivot account" : "anonymous session"}?`)) return;
     const response = await fetch("/api/session", { method: "DELETE" });
-    if (response.ok) { await unsubscribeCurrentPushSubscription({ notifyServer: false }).catch(() => undefined); localStorage.removeItem("pivot-state"); if (account.authenticated) await signOut({ redirectTo: "/onboarding" }); else window.location.href = "/onboarding"; }
+    if (response.ok) { await unsubscribeCurrentPushSubscription({ notifyServer: false }).catch(() => undefined); localStorage.removeItem("pivot-state"); if (account.authenticated) await signOut({ redirectTo: "/onboarding" }); else router.push("/onboarding"); }
     else setStatus("Your data could not be deleted. Please try again.");
   }
 
@@ -109,6 +112,7 @@ export default function SettingsPage() {
           </aside>
         </div>
         <p className="privacy-note"><span className="privacy-ic"><Icon name="shield" size={15} /></span> Pivot does not require an account to be useful.</p>
+        <LegalLinks />
       </div>
     </AppShell>
   );

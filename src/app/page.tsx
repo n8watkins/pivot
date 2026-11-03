@@ -6,6 +6,7 @@ import { defaultContextTags, replacements, type Replacement } from "@/components
 import { AppShell, type UtilityNavItem } from "@/components/pivot/app-shell";
 import { PivotStatsRail } from "@/components/pivot/pivot-stats-rail";
 import { Icon, Progress, ReplacementIcon } from "@/components/pivot/ui";
+import { crisisResources, hasHighRiskContext, hasUnsupportedContext } from "@/lib/crisis";
 import { fallbackFirstStep } from "@/lib/replacement-copy";
 
 type Screen = "home" | "urge" | "recommendation" | "active" | "followup" | "history" | "safety";
@@ -158,6 +159,9 @@ export default function Home() {
   const pivotCounts = useMemo(() => history.reduce<Record<string, number>>((acc, event) => { if (event.pivotId) acc[event.pivotId] = (acc[event.pivotId] ?? 0) + 1; return acc; }, {}), [history]);
   const activeRecent = useMemo(() => history.filter((event) => event.pivotId === activePivotId).slice(0, 3).map((event) => ({ id: event.id, choice: event.choice, outcome: event.outcome, date: event.date })), [history, activePivotId]);
 
+  // Each step starts at the top, so a new screen (especially crisis resources) is never shown mid-page.
+  useEffect(() => { window.scrollTo({ top: 0 }); }, [screen]);
+
   useEffect(() => {
     if (screen !== "active" || !activeStartedAt || !timerDuration) return;
     const updateTimer = () => setTimerRemaining(Math.max(0, Math.ceil((new Date(activeStartedAt).getTime() + timerDuration * 1000 - Date.now()) / 1000)));
@@ -180,6 +184,15 @@ export default function Home() {
       source: "fallback",
     };
     const recommendationContext = [context, contextNote].filter(Boolean).join(". ");
+    // Check on the device first, so crisis resources appear immediately and never depend on
+    // the network or the recommendation service. The server repeats the same check.
+    const localRoute = hasHighRiskContext(recommendationContext) ? "high-risk" : hasUnsupportedContext(recommendationContext) ? "specialized" : null;
+    if (localRoute) {
+      setIsRecommending(false);
+      setSafetyKind(localRoute);
+      setScreen("safety");
+      return;
+    }
     const response = await fetch("/api/recommendation", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -437,7 +450,7 @@ export default function Home() {
             <div className="urge-note-column">
               <label className="field-label" htmlFor="context-note">Anything else on your mind? <span>Optional</span></label>
               <textarea id="context-note" className="text-input text-area" placeholder="A few words, if useful" value={contextNote} onChange={(event) => setContextNote(event.target.value)} />
-              <p className="private-field-note">This note is used for this recommendation and is not saved to History.</p>
+              <p className="private-field-note">Your note is sent to Google Gemini for this suggestion and is never stored. <Link href="/privacy">Privacy</Link></p>
               <div className="intensity">
                 <div><span className="field-label">How strong is it?</span><strong>{urge} / 10</strong></div>
                 <input type="range" min="1" max="10" value={urge} onChange={(event) => setUrge(Number(event.target.value))} aria-label="Urge intensity" />
@@ -552,24 +565,31 @@ export default function Home() {
 
       {screen === "safety" && (
         <section className="flow-screen">
-          <p className="eyebrow">A different kind of support</p>
-          <h1>{safetyKind === "high-risk" ? "This may need immediate support." : "This needs specialized support."}</h1>
           {safetyKind === "high-risk" ? (
             <>
-              <p className="lede">Pivot is not crisis care. If you might hurt yourself or someone else, contact local emergency services or a trusted person now.</p>
-              <div className="support-card">
-                <strong>In the United States or Canada</strong>
-                <p>Call or text 988 to reach trained crisis support. If there is immediate danger, call emergency services.</p>
-                <a href="tel:988" className="primary-button full">Call 988 <Icon name="arrowRight" size={18} /></a>
+              <p className="eyebrow">Let’s pause here</p>
+              <h1 className="crisis-heading">This sounds heavier than what Pivot is built for.</h1>
+              <p className="lede">You deserve support from a real person right now. Reaching out is a strong next step.</p>
+              <div className="support-card crisis-card">
+                <strong>Talk to someone now</strong>
+                <p>In the US, call or text <a href={crisisResources.call}>988</a> (Suicide &amp; Crisis Lifeline) any time, or <a href={crisisResources.chat} target="_blank" rel="noopener noreferrer">chat online</a>. It is free and confidential.</p>
+                <div className="crisis-actions">
+                  <a href={crisisResources.call} className="primary-button full">Call 988 <Icon name="arrowRight" size={18} /></a>
+                  <a href={crisisResources.text} className="secondary-button full">Text 988</a>
+                </div>
+                <p>Outside the US, find a local helpline at <a href={crisisResources.international} target="_blank" rel="noopener noreferrer">findahelpline.com</a>.</p>
+                <p><strong className="crisis-emergency">If you are in immediate danger, call your local emergency number (911 in the US).</strong></p>
               </div>
             </>
           ) : (
             <>
+              <p className="eyebrow">A different kind of support</p>
+              <h1>This needs specialized support.</h1>
               <p className="lede">Pivot is designed for everyday habits, not clinical treatment. A qualified professional or specialized service can offer safer, more appropriate support for this.</p>
               <div className="support-card"><strong>You can still take one small step</strong><p>Consider contacting a healthcare professional or someone you trust who can help you find specialized support.</p></div>
             </>
           )}
-          <button type="button" className="quiet-button" onClick={reset}>Return to Pivot</button>
+          <button type="button" className="quiet-button" onClick={() => { setContextNote(""); reset(); }}>Back to Pivot</button>
         </section>
       )}
     </AppShell>
