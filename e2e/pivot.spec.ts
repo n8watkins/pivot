@@ -9,6 +9,7 @@ test.beforeEach(async ({ page }) => {
 });
 import { createClient } from "@libsql/client";
 import AxeBuilder from "@axe-core/playwright";
+import { e2eDatabase, hasE2EDatabase } from "./env";
 
 test.use({ serviceWorkers: "block" });
 
@@ -519,6 +520,7 @@ test("individual History entries can be deleted", async ({ page }) => {
 });
 
 test("a completed and deleted check-in leaves no intervention records behind", async ({ page }) => {
+  test.skip(!hasE2EDatabase, "needs direct access to the deployment's database");
   await createBasicPivot(page);
   const sessionId = (await page.context().cookies()).find((cookie) => cookie.name === "pivot_session")?.value;
   expect(sessionId).toBeTruthy();
@@ -532,7 +534,7 @@ test("a completed and deleted check-in leaves no intervention records behind", a
   // Wait for the save: until it lands the check-in screen is still up, without navigation.
   await expect(page.getByRole("status")).toContainText("Check-in saved");
 
-  const db = createClient({ url: "file:./data/pivot-e2e.db" });
+  const db = createClient({ url: e2eDatabase.url!, authToken: e2eDatabase.authToken });
   const completed = await executeWhenDatabaseIsAvailable(db, {
     sql: "SELECT COUNT(*) AS count FROM active_interventions WHERE session_id = ?",
     args: [sessionId!],
@@ -591,6 +593,7 @@ test("privacy event can be created and deleted for the anonymous session", async
 });
 
 test("anonymous session deletion removes pivot state", async ({ request }) => {
+  test.skip(!hasE2EDatabase, "needs direct access to the deployment's database");
   const saved = await request.post("/api/state", { data: { pivots: [{ id: "pivot-delete-test", goal: "checking email", replacements: [{ id: "walk", name: "Take a short walk", detail: "A reset", duration: "5 min" }] }] } });
   expect(saved.ok()).toBeTruthy();
   expect((await request.get("/api/state")).ok()).toBeTruthy();
@@ -598,7 +601,7 @@ test("anonymous session deletion removes pivot state", async ({ request }) => {
   const sessionId = (await (await request.get("/api/session")).json()).sessionId as string;
   expect((await request.delete("/api/session")).ok()).toBeTruthy();
   expect((await (await request.get("/api/state")).json()).pivots).toEqual([]);
-  const db = createClient({ url: "file:./data/pivot-e2e.db" });
+  const db = createClient({ url: e2eDatabase.url!, authToken: e2eDatabase.authToken });
   const rateLimits = await executeWhenDatabaseIsAvailable(db, { sql: "SELECT COUNT(*) AS count FROM rate_limits WHERE key LIKE '%:' || ?", args: [sessionId] });
   expect(Number(rateLimits.rows[0].count)).toBe(0);
   db.close();
@@ -617,10 +620,14 @@ test("data export contains the user's structured data and attachment headers", a
   expect((await request.delete("/api/session")).ok()).toBeTruthy();
 });
 
-test("health endpoint reports the SQLite runtime without secrets", async ({ request }) => {
+test("health endpoint reports the storage runtime without secrets", async ({ request }) => {
   const response = await request.get("/api/health");
   expect(response.ok()).toBeTruthy();
-  await expect(response.json()).resolves.toMatchObject({ status: "ok", persistence: "sqlite", persistentStorageReady: true });
+  const health = await response.json();
+  // Locally a SQLite file; a deployment under test uses a libSQL server (persistence "turso").
+  const persistence = !hasE2EDatabase ? "memory" : e2eDatabase.url!.startsWith("file:") ? "sqlite" : "turso";
+  expect(health).toMatchObject({ status: "ok", persistence, persistentStorageReady: true });
+  expect(JSON.stringify(health)).not.toMatch(/secret|token|libsql:|https?:/i);
 });
 
 test("narrow and reduced-motion layouts remain usable without horizontal overflow", async ({ page }) => {

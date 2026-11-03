@@ -1,0 +1,25 @@
+# Worker secrets. Set each one on the deployed Worker with
+# `npx wrangler secret put NAME`; never commit real values.
+# Copy this file to .dev.vars for `npm run preview:worker`.
+# `npm run cf-typegen` reads the names here to type the Worker's env.
+
+# Required: production refuses to run without persistent storage.
+TURSO_DATABASE_URL=
+TURSO_AUTH_TOKEN=
+
+# Check-ins: the VAPID pair for Web Push (npx web-push generate-vapid-keys) and
+# the secret that authorizes the hourly Cron Trigger's call to
+# /api/cron/notifications. Check-ins stay off while any of them is missing.
+WEB_PUSH_VAPID_PUBLIC_KEY=
+WEB_PUSH_VAPID_PRIVATE_KEY=
+CRON_SECRET=
+
+# Optional GitHub accounts through Auth.js (npx auth secret). The OAuth app's
+# callback URL is <origin>/api/auth/callback/github.
+AUTH_SECRET=
+AUTH_GITHUB_ID=
+AUTH_GITHUB_SECRET=
+
+# Optional AI recommendations.
+ENABLE_GEMINI_RECOMMENDATIONS=
+GEMINI_API_KEY=

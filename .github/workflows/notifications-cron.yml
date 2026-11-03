@@ -1,9 +1,11 @@
 name: Notification check-ins
 
 # Hourly trigger for /api/cron/notifications, which sends due check-ins at 09:00 local time.
-# This runs on a GitHub-hosted runner instead of Vercel Cron because the Vercel Hobby plan
-# only allows daily crons. It does nothing until the CRON_SECRET repository secret is set
-# to the same value as the CRON_SECRET Vercel production variable.
+# This calls the Vercel deployment, which serves production until the move to Cloudflare,
+# from a GitHub-hosted runner because the Vercel Hobby plan only allows daily crons. It does
+# nothing until the CRON_SECRET repository secret is set to the same value as the
+# CRON_SECRET Vercel production variable. The Cloudflare Worker runs the same schedule as
+# its own Cron Trigger (wrangler.jsonc), so delete this workflow once production moves there.
 
 on:
   schedule:

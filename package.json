@@ -4,16 +4,23 @@
   "private": true,
   "overrides": {
     "postcss": "^8.5.10",
-    "sharp": "^0.35.3"
+    "sharp": "^0.35.3",
+    "@node-minify/core": {
+      "glob": "10.5.0"
+    }
   },
   "scripts": {
     "dev": "next dev",
     "dev:sqlite": "node scripts/run-local-sqlite.mjs dev",
     "build": "next build",
+    "build:worker": "opennextjs-cloudflare build",
+    "preview:worker": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
+    "deploy:worker": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+    "cf-typegen": "wrangler types cloudflare-env.d.ts --env-interface CloudflareEnv --strict-vars=false --env-file .dev.vars.example",
     "start": "next start",
     "start:sqlite": "node scripts/run-local-sqlite.mjs start",
     "lint": "eslint",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.worker.json",
     "test": "vitest run",
     "test:e2e": "playwright test",
     "db:migrate": "tsx scripts/migrate.ts",
@@ -23,6 +30,7 @@
   },
   "dependencies": {
     "@libsql/client": "^0.18.0",
+    "@opennextjs/cloudflare": "1.20.15",
     "next": "16.4.3",
     "next-auth": "^5.0.0-beta.32",
     "react": "19.3.1",
@@ -46,6 +54,7 @@
     "tailwindcss": "^4",
     "tsx": "^4.23.1",
     "typescript": "~6.0.3",
-    "vitest": "^5.1.0"
+    "vitest": "^5.1.0",
+    "wrangler": "4.157.0"
   }
 }

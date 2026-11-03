@@ -49,3 +49,21 @@ jobs:
       - run: npm run build
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
+
+  # The Cloudflare Workers build: binding types match wrangler.jsonc, the
+  # OpenNext build succeeds, and wrangler can bundle the Worker.
+  worker:
+    name: Worker build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Binding types match wrangler.jsonc
+        run: npx wrangler types cloudflare-env.d.ts --env-interface CloudflareEnv --strict-vars=false --env-file .dev.vars.example --check
+      - run: npm run build:worker
+      - name: Bundle the Worker
+        run: npx wrangler deploy --dry-run --outdir "${{ runner.temp }}/worker-bundle"
