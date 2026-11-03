@@ -949,6 +949,21 @@ h1 {
   font-size: 14px;
 }
 
+.crisis-actions {
+  display: grid;
+  gap: 10px;
+  margin: 16px 0 6px;
+}
+
+.support-card .crisis-actions .primary-button {
+  margin-top: 0;
+}
+
+.crisis-card .crisis-emergency {
+  color: var(--ink);
+  font-size: 14px;
+}
+
 /* ============================================================
    Active screen (orbit timer)
    ============================================================ */

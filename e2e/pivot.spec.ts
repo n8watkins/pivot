@@ -57,11 +57,47 @@ test("crisis language shows the support card instead of a habit suggestion", asy
   await expect(page.getByRole("link", { name: "988", exact: true })).toHaveAttribute("href", "tel:988");
   await expect(page.getByRole("link", { name: /Call 988/ })).toHaveAttribute("href", "tel:988");
   await expect(page.getByRole("link", { name: "findahelpline.com" })).toHaveAttribute("href", "https://findahelpline.com");
-  await expect(page.getByText("If you are in immediate danger, call your local emergency number.")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Text 988" })).toHaveAttribute("href", "sms:988");
+  await expect(page.getByRole("link", { name: "chat online" })).toHaveAttribute("href", "https://988lifeline.org/chat/");
+  await expect(page.getByText("If you are in immediate danger, call your local emergency number (911 in the US).")).toBeVisible();
   await page.getByRole("button", { name: "Back to Pivot" }).click();
   await expect(page.getByRole("heading", { name: "Ready when you are." })).toBeVisible();
   await page.getByRole("button", { name: /I’m having an urge/ }).click();
   await expect(page.getByLabel(/Anything else on your mind/)).toHaveValue("");
+});
+
+for (const note of ["I want to die", "im feeling sucidal", "kms", "I can't go on anymore", "took too many pills"]) {
+  test(`crisis phrasing ${JSON.stringify(note)} shows crisis resources without waiting for the server`, async ({ page }) => {
+    await createBasicPivot(page);
+    const recommendationRequests: string[] = [];
+    page.on("request", (request) => { if (request.url().includes("/api/recommendation")) recommendationRequests.push(request.url()); });
+    await page.getByRole("button", { name: /I’m having an urge/ }).click();
+    await page.getByLabel(/Anything else on your mind/).fill(note);
+    await page.getByRole("button", { name: /Show me a next step/ }).click();
+    await expect(page.getByRole("heading", { name: "This sounds heavier than what Pivot is built for." })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Try this for/ })).toHaveCount(0);
+    expect(recommendationRequests).toEqual([]);
+  });
+}
+
+test("the server still routes crisis language to support when the client check is bypassed", async ({ page }) => {
+  await createBasicPivot(page);
+  const response = await page.request.post("/api/recommendation", { data: { context: "I feel suicidal", replacements: [{ id: "walk", name: "Take a short walk", detail: "", duration: "5 min" }], pivotId: "missing" } });
+  const body = await response.json();
+  expect(body.route).toBe("support");
+  expect(body.replacementId).toBeUndefined();
+});
+
+test("crisis resources are above the fold on a phone", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await createBasicPivot(page);
+  await page.getByRole("button", { name: /I’m having an urge/ }).click();
+  await page.getByLabel(/Anything else on your mind/).fill("I feel suicidal");
+  await page.getByRole("button", { name: /Show me a next step/ }).click();
+  await expect(page.getByRole("heading", { name: "This sounds heavier than what Pivot is built for." })).toBeInViewport();
+  expect(await page.evaluate(() => window.scrollY)).toBe(0);
+  await expect(page.getByRole("link", { name: /Call 988/ })).toBeInViewport();
+  await expect(page.getByRole("link", { name: "Text 988" })).toBeInViewport();
 });
 
 test("everyday idioms still get a normal suggestion", async ({ page }) => {
