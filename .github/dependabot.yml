@@ -1,15 +1,40 @@
+# Pivot's own Dependabot config (release-kit apply leaves a file it did not write alone).
+# Weekly grouped updates for Pivot's dependencies and actions, plus release-kit's
+# multi-ecosystem group: a new kit release arrives as one PR that moves the dev
+# dependency (npm) and the workflow pins (github-actions) together. The kit is excluded
+# from the default cooldown, which would otherwise propose a downgrade to an older tag.
 version: 2
+multi-ecosystem-groups:
+  release-kit:
+    schedule:
+      interval: daily
+    commit-message:
+      prefix: build
+      include: scope
 updates:
   - package-ecosystem: npm
     directory: /
     schedule:
       interval: weekly
+    patterns: ["release-kit"]
+    multi-ecosystem-group: release-kit
+    cooldown:
+      exclude: ["release-kit"]
     groups:
       production-dependencies:
         dependency-type: production
       development-dependencies:
         dependency-type: development
+        exclude-patterns: ["release-kit"]
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
+    patterns: ["n8watkins/release-kit*"]
+    multi-ecosystem-group: release-kit
+    cooldown:
+      exclude: ["n8watkins/release-kit*"]
+    groups:
+      github-actions:
+        patterns: ["*"]
+        exclude-patterns: ["n8watkins/release-kit*"]
