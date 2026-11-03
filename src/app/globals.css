@@ -1531,6 +1531,10 @@ h1 {
   margin: 0;
 }
 
+.legal-section p + p {
+  margin-top: 10px;
+}
+
 .legal-section ul {
   margin: 0;
   padding-left: 18px;

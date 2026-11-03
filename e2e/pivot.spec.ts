@@ -154,7 +154,8 @@ test("privacy and terms pages are linked from settings", async ({ page }) => {
   await page.getByRole("navigation", { name: "Legal" }).getByRole("link", { name: "Privacy" }).click();
   await expect(page.getByRole("heading", { name: "Your data, plainly." })).toBeVisible();
   await expect(page.getByText(/never saved by Pivot/)).toBeVisible();
-  await expect(page.getByText(/sent to Google’s Gemini API|sent to Google's Gemini API/)).toBeVisible();
+  await expect(page.getByText(/Gemini API on its free tier/)).toBeVisible();
+  await expect(page.getByText(/may use submitted text to improve its products/)).toBeVisible();
   await page.getByRole("navigation", { name: "Legal" }).getByRole("link", { name: "Terms" }).click();
   await expect(page.getByRole("heading", { name: "The short version." })).toBeVisible();
   await expect(page.getByText(/not medical or mental-health treatment/)).toBeVisible();
@@ -168,9 +169,12 @@ test("the first screen says Pivot is not care or an emergency service and links 
   await footer.getByRole("link", { name: "Privacy" }).click();
   await expect(page.getByRole("heading", { name: "Your data, plainly." })).toBeVisible();
   await expect(page.getByRole("heading", { name: "How long data is kept" })).toBeVisible();
-  await expect(page.getByText(/plain-language draft/)).toBeVisible();
+  await expect(page.getByText(/Last updated/)).toBeVisible();
+  await expect(page.getByText(/draft/i)).toHaveCount(0);
   await page.locator("footer.safety-footer").getByRole("link", { name: "Terms" }).click();
   await expect(page.getByText("You must be 18 or older to use Pivot.")).toBeVisible();
+  await expect(page.getByText(/Gemini API on its free tier/)).toBeVisible();
+  await expect(page.getByText(/draft/i)).toHaveCount(0);
 });
 
 test("onboarding shows the safety footer", async ({ page }) => {
