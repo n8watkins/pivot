@@ -21,10 +21,15 @@ updates:
     cooldown:
       exclude: ["release-kit"]
     groups:
+      # Minor and patch only: a major arrives in its own pull request, so one
+      # breaking update (TypeScript 7 in #15) can't hold back the rest, and
+      # the grouped minors can merge on their own (auto-merge.yml).
       production-dependencies:
         dependency-type: production
+        update-types: [minor, patch]
       development-dependencies:
         dependency-type: development
+        update-types: [minor, patch]
         exclude-patterns: ["release-kit"]
   - package-ecosystem: github-actions
     directory: /

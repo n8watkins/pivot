@@ -1,6 +1,6 @@
 {
   "name": "pivot",
-  "version": "0.1.0",
+  "version": "0.2.1",
   "private": true,
   "overrides": {
     "postcss": "^8.5.10",
@@ -42,7 +42,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.4.3",
     "jsdom": "^29.1.1",
-    "release-kit": "github:n8watkins/release-kit#v2.4.1",
+    "release-kit": "github:n8watkins/release-kit#v2.5.2",
     "tailwindcss": "^4",
     "tsx": "^4.23.1",
     "typescript": "^5",
