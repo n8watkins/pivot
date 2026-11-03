@@ -31,6 +31,9 @@ export const recommendationInputSchema = z.object({
   replacements: z.array(replacementInputSchema).min(1),
   context: z.string().max(500).default(""),
   pivotId: z.string().regex(/^[a-z0-9-]{2,80}$/),
+  tag: z.string().max(80).default(""),
+  intensity: z.number().int().min(1).max(10).optional(),
+  hour: z.number().int().min(0).max(23).optional(),
 });
 
 export const closedLoopInputSchema = z.object({

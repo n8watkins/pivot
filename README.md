@@ -9,7 +9,7 @@ It supports any everyday habit, keeps each habit and its replacement actions in 
 - Any number of pivots and any number of approved replacement actions per pivot.
 - Reusable built-in and custom context tags.
 - Optional one-time context notes that are sent for recommendation and never stored.
-- Deterministic recommendation ranking based on recent helpful and unhelpful outcomes.
+- Context-aware deterministic ranking (`src/lib/ranking.ts`): the tag, the intensity the user set, the local time, and what helped before (for the same tag first) pick the action, and the reason shown is written from those inputs.
 - Deterministic recommendations by default, with the Gemini adapter retained behind an explicit release flag.
 - Active-action refresh recovery and a duration countdown.
 - Follow-up for current urge, lapse outcome, and explicit helpfulness.

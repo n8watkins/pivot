@@ -29,14 +29,21 @@ export async function POST(request: Request) {
   const pivot = snapshot.pivots.find((item) => item.id === parsedInput.data.pivotId);
   if (getDatabase() && !pivot) return NextResponse.json({ error: "Pivot not found" }, { status: 404 });
   const replacements = (pivot?.replacements ?? parsedInput.data.replacements) as ReplacementOption[];
-  const history = snapshot.history.filter((event) => event.pivotId === parsedInput.data.pivotId).map((event) => ({ replacementId: event.replacementId, helpful: event.helpful }));
+  const history = snapshot.history.filter((event) => event.pivotId === parsedInput.data.pivotId).map((event) => ({ replacementId: event.replacementId, helpful: event.helpful, contextType: event.contextType }));
+  const rankingContext = { tag: parsedInput.data.tag, intensity: parsedInput.data.intensity, hour: parsedInput.data.hour };
   let source: "gemini" | "fallback" = "fallback";
-  let recommendation = deterministicFallback(replacements, history);
+  let recommendation = deterministicFallback(replacements, history, rankingContext);
   const apiKey = process.env.GEMINI_API_KEY;
   const geminiEnabled = process.env.ENABLE_GEMINI_RECOMMENDATIONS === "true";
   if (apiKey && geminiEnabled) {
     try {
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${apiKey}`, { method: "POST", headers: { "Content-Type": "application/json" }, signal: AbortSignal.timeout(3500), body: JSON.stringify({ contents: [{ parts: [{ text: `Choose only from these approved replacements: ${JSON.stringify(replacements)}. Context: ${context}. Return JSON with replacementId, reason, firstStep, alternatives (max 2 ids), safety (safe|review|blocked). Set safety to blocked if the context mentions suicide, self-harm, wanting to die, or danger to anyone.` }] }], generationConfig: { responseMimeType: "application/json" } }) });
+      const signals = [
+        rankingContext.intensity ? `Urge intensity: ${rankingContext.intensity}/10.` : "",
+        typeof rankingContext.hour === "number" ? `Local hour: ${rankingContext.hour}.` : "",
+        `Rule-based pick for this context: ${recommendation.replacementId}.`,
+      ].filter(Boolean).join(" ");
+      const prompt = `Choose only from these approved replacements: ${JSON.stringify(replacements)}. Context: ${context || "none given"}. ${signals} Return JSON with replacementId, reason, firstStep, alternatives (max 2 ids), safety (safe|review|blocked). Write reason as one short, kind sentence to the user that refers to what they shared (under 140 characters). Set safety to blocked if the context mentions suicide, self-harm, wanting to die, or danger to anyone.`;
+      const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent", { method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey }, signal: AbortSignal.timeout(3500), body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json" } }) });
       const outcome = interpretGeminiPayload(await response.json(), replacements);
       if (outcome.kind === "support") return supportResponse();
       if (outcome.kind === "recommendation") { recommendation = outcome.recommendation; source = "gemini"; }
