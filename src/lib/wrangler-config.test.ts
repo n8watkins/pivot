@@ -5,7 +5,7 @@ describe("wrangler.jsonc", () => {
   // JSONC: drop comments, then parse.
   const config = JSON.parse(readFileSync(new URL("../../wrangler.jsonc", import.meta.url), "utf8").replace(/^\s*\/\/.*$/gm, ""));
 
-  it("keeps the hourly check-in schedule the GitHub Actions workflow used", () => {
+  it("runs check-ins hourly", () => {
     expect(config.triggers.crons).toEqual(["7 * * * *"]);
   });
 
