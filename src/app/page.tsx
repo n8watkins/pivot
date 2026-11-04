@@ -427,14 +427,22 @@ export default function Home() {
             </>
           ) : (
             <>
-              <button className="urge-button" disabled>
-                <span className="urge-symbol"><Icon name="spark" size={24} strokeWidth={1.8} /></span>
-                <span>
-                  <strong>{stateReady ? "Create a pivot first" : "Loading your pivots"}</strong>
-                  <small>{stateReady ? "Choose what you want to change" : "Just a moment"}</small>
-                </span>
-              </button>
-              {stateReady && <Link className="onboarding-link" href="/onboarding">Set up your first pivot <Icon name="arrowRight" size={16} /></Link>}
+              {stateReady ? (
+                <Link className="urge-button" href="/onboarding">
+                  <span className="urge-symbol"><Icon name="spark" size={24} strokeWidth={1.8} /></span>
+                  <span>
+                    <strong>Set up your first pivot</strong>
+                    <small>Pick a habit and a few things to do instead. About a minute.</small>
+                  </span>
+                  <span className="arrow"><Icon name="arrowRight" size={20} /></span>
+                </Link>
+              ) : (
+                <button className="urge-button" disabled>
+                  <span className="urge-symbol"><Icon name="spark" size={24} strokeWidth={1.8} /></span>
+                  <span><strong>Loading your pivots</strong><small>Just a moment</small></span>
+                </button>
+              )}
+              {stateReady && <Link className="onboarding-link" href="/welcome">New here? See how Pivot works <Icon name="arrowRight" size={16} /></Link>}
             </>
           )}
         </section>

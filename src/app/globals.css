@@ -768,6 +768,7 @@ h1 {
   color: var(--coral-ink);
   padding: 20px 22px;
   text-align: left;
+  text-decoration: none;
 }
 
 .urge-button:disabled {

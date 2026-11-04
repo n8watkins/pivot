@@ -1,15 +1,57 @@
-/* PREVIEW ONLY: landing page concept. */
-.welcome {
+/* /welcome: the landing page for people who have not used Pivot yet. */
+.welcome-page {
   width: 100%;
   max-width: 1120px;
   margin: 0 auto;
-  padding: 24px 24px 48px;
+  padding: 24px max(24px, env(safe-area-inset-right)) 48px max(24px, env(safe-area-inset-left));
+}
+
+.welcome {
+  min-width: 0;
 }
 
 .welcome-top {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 16px;
+}
+
+.welcome-nav {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.welcome-nav a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  color: var(--ink-soft);
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.welcome-nav a:hover {
+  color: var(--deep-sage);
+}
+
+.welcome-crisis {
+  max-width: 34em;
+  margin: 20px 0 0;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--sage-tint-2);
+  color: var(--ink-soft);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.welcome-crisis a {
+  color: var(--deep-sage);
+  font-weight: 650;
 }
 
 .welcome-top-link {
@@ -80,6 +122,7 @@
 }
 
 .welcome-phone {
+  margin: 0;
   position: absolute;
   width: 250px;
   border: 8px solid #1f2723;
@@ -132,7 +175,7 @@
 }
 
 .welcome-steps li,
-.welcome-promises article {
+.welcome-promises li {
   padding: 24px;
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
@@ -152,10 +195,13 @@
   font-weight: 700;
 }
 
-.welcome-steps strong,
-.welcome-promises strong {
-  display: block;
+.welcome-steps h3,
+.welcome-promises h3,
+.welcome-install-card h3 {
+  margin: 0;
   font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -.01em;
 }
 
 .welcome-steps p,
@@ -171,9 +217,12 @@
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 20px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
-.welcome-promises article {
+.welcome-promises li {
   display: flex;
   gap: 14px;
   background: var(--sage-tint-2);
@@ -189,6 +238,92 @@
 
 .welcome-honest {
   max-width: 720px;
+}
+
+.welcome-install-section {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 40px;
+  align-items: center;
+}
+
+.welcome-install-copy p:not(.eyebrow) {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 17px;
+  line-height: 1.6;
+}
+
+.welcome-install-copy h2 {
+  margin-bottom: 16px;
+}
+
+.welcome-install-card {
+  display: flex;
+  gap: 18px;
+  align-items: flex-start;
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--card);
+  box-shadow: var(--shadow-md);
+}
+
+.welcome-install-card > img {
+  flex: none;
+  border-radius: 14px;
+  box-shadow: var(--shadow-sm);
+}
+
+.welcome-install-body {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  justify-items: start;
+}
+
+.welcome-install-steps {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.welcome-install-steps li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--paper);
+}
+
+.welcome-install-steps span {
+  display: grid;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--deep-sage);
+  color: var(--paper);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.welcome-install-steps p,
+.welcome-install-note,
+.welcome-install-done {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.welcome-install-note {
+  font-size: 13px;
 }
 
 .welcome-honest h2 {
@@ -207,14 +342,33 @@
   margin-bottom: 24px;
 }
 
-.welcome-footer {
-  padding-top: 24px;
-  border-top: 1px solid var(--line);
-}
 
 @media (max-width: 860px) {
-  .welcome {
-    padding: 16px 16px 32px;
+  .welcome-page {
+    padding: 16px max(16px, env(safe-area-inset-right)) 32px max(16px, env(safe-area-inset-left));
+  }
+
+  .welcome-nav {
+    gap: 14px;
+  }
+
+  .welcome-nav a {
+    font-size: 14px;
+  }
+
+  .welcome-install-section {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+
+  .welcome-install-card {
+    flex-direction: column;
+    padding: 18px;
+    gap: 14px;
+  }
+
+  .welcome-install-body {
+    width: 100%;
   }
 
   .welcome-hero {
