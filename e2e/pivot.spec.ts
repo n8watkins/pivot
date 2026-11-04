@@ -539,9 +539,9 @@ test("settings can edit, reorder, and delete a pivot", async ({ page }) => {
   await page.getByRole("button", { name: "Save pivot" }).click();
   await expect(page.getByRole("link", { name: "Edit evening scrolling" })).toBeVisible();
   await page.getByRole("link", { name: "Edit evening scrolling" }).click();
-  page.once("dialog", (dialog) => dialog.accept());
   await page.getByRole("button", { name: "Delete this pivot" }).click();
   await expect(page.getByText("Create your first pivot to get started.")).toBeVisible();
+  await expect(page.getByRole("region", { name: "Notifications" })).toContainText("“evening scrolling” deleted");
 });
 
 test("concurrent pivot creation preserves both independent pivots", async ({ request }) => {
@@ -606,6 +606,8 @@ test("a completed and deleted check-in leaves no intervention records behind", a
 
   await page.getByRole("button", { name: "History" }).click();
   await Promise.all([page.waitForResponse("**/api/history/**"), page.getByRole("button", { name: /Delete Take a short walk History entry/ }).click()]);
+  // The entry is only soft-deleted while its Undo toast shows; closing the toast removes it for good.
+  await Promise.all([page.waitForResponse("**/api/trash"), page.getByRole("button", { name: "Dismiss" }).click()]);
 
   const counts = await Promise.all([
     executeWhenDatabaseIsAvailable(db, { sql: "SELECT COUNT(*) AS count FROM active_interventions WHERE session_id = ?", args: [sessionId!] }),
@@ -627,8 +629,8 @@ test("History keeps its pivot and action labels after that pivot is deleted", as
   await page.getByRole("button", { name: "Not this time" }).click();
   await page.goto("/settings");
   await page.getByRole("link", { name: "Edit evening snacking" }).click();
-  page.once("dialog", (dialog) => dialog.accept());
   await page.getByRole("button", { name: "Delete this pivot" }).click();
+  await expect(page.getByText("Create your first pivot to get started.")).toBeVisible();
   await page.goto("/");
   await page.getByRole("button", { name: /History/ }).click();
   await expect(page.getByText("Take a short walk")).toBeVisible();

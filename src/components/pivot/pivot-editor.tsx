@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { replacements, type Replacement } from "@/components/pivot/data";
 import { AppShell, type UtilityNavItem } from "@/components/pivot/app-shell";
 import { Icon, ReplacementIcon } from "@/components/pivot/ui";
+import { usePivotDataChanged, useUndoToast } from "@/components/pivot/undo-toast";
 
 type SidebarPivot = { id: string; goal: string };
 
@@ -25,6 +26,13 @@ export default function PivotEditor({ pivotId }: { pivotId?: string }) {
   const [error, setError] = useState("");
   const [sidebarPivots, setSidebarPivots] = useState<SidebarPivot[]>([]);
   const [pivotCounts, setPivotCounts] = useState<Record<string, number>>({});
+  const { showDeleted } = useUndoToast();
+  // After an Undo elsewhere only the sidebar refreshes, so the form keeps its edits.
+  usePivotDataChanged(() => {
+    void fetch("/api/state").then((response) => response.ok ? response.json() : null).then((snapshot: { pivots?: SidebarPivot[] } | null) => {
+      if (snapshot?.pivots) setSidebarPivots(snapshot.pivots.map((pivot) => ({ id: pivot.id, goal: pivot.goal })));
+    }).catch(() => undefined);
+  });
 
   useEffect(() => {
     void fetch("/api/state").then((response) => response.ok ? response.json() : null).then((snapshot: { pivots?: { id: string; goal: string; replacements: Omit<Replacement, "icon">[] }[]; history?: { pivotId?: string }[] } | null) => {
@@ -68,11 +76,14 @@ export default function PivotEditor({ pivotId }: { pivotId?: string }) {
   }
 
   async function removePivot() {
-    if (!pivotId || !window.confirm("Delete this pivot? Its past History entries will remain.")) return;
+    if (!pivotId) return;
     setSaving(true);
+    setError("");
     const response = await fetch(`/api/pivots/${pivotId}`, { method: "DELETE" }).catch(() => null);
     const payload = response ? await response.json().catch(() => null) : null;
     if (!response?.ok) { setSaving(false); setError(payload?.error ?? "Your pivot could not be deleted."); return; }
+    // History keeps its entries either way; Undo brings the pivot back exactly as it was.
+    showDeleted({ kind: "pivot", id: pivotId, message: `“${goal.trim() || "Pivot"}” deleted` });
     router.push("/settings/pivots");
   }
 

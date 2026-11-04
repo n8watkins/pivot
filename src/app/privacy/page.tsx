@@ -31,7 +31,7 @@ export default function PrivacyPage() {
       </LegalSection>
       <LegalSection title="How long data is kept">
         <ul>
-          <li>Your pivots, actions, tags, and History stay until you delete them in Settings. Deletion is immediate and complete.</li>
+          <li>Your pivots, actions, tags, and History stay until you delete them. Deleting all your data in Settings is immediate and complete. A single pivot, tag, or History entry you delete can be restored with Undo for a few seconds, and is then removed for good (within an hour at most if you close the page right away).</li>
           <li>The anonymous session cookie expires after a year.</li>
           <li>If you clear your cookies without deleting first, Pivot can no longer connect that data to you, and it stays stored until it is removed. Pivot does not yet delete inactive data automatically.</li>
         </ul>

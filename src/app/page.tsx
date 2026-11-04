@@ -12,6 +12,7 @@ import { EmergencyAndInternational, ResourceList } from "@/components/pivot/cris
 import { rankWithContext } from "@/lib/ranking";
 import { fallbackFirstStep } from "@/lib/replacement-copy";
 import { RECOMMENDATION_REQUEST_TIMEOUT_MS } from "@/lib/gemini";
+import { usePivotDataChanged, useUndoToast } from "@/components/pivot/undo-toast";
 
 type Screen = "home" | "urge" | "recommendation" | "active" | "followup" | "history" | "safety";
 type Pivot = { id: string; goal: string; replacements: Replacement[] };
@@ -78,6 +79,20 @@ export default function Home() {
   const [safetyKind, setSafetyKind] = useState<"high-risk" | "specialized">("high-risk");
   const [safetyCategories, setSafetyCategories] = useState<string[]>([]);
   const [history, setHistory] = useState<HistoryEvent[]>([]);
+  const { showDeleted } = useUndoToast();
+
+  // An Undo brings a deleted pivot or History entry back: refresh those lists, not the flow.
+  usePivotDataChanged(() => {
+    void fetch("/api/state")
+      .then((response) => response.ok ? response.json() : null)
+      .then((snapshot: { pivots?: { id: string; goal: string; replacements: Omit<Replacement, "icon">[] }[]; history?: HistoryEvent[]; contextTags?: string[] } | null) => {
+        if (!snapshot) return;
+        setPivots(snapshot.pivots?.map((pivot) => ({ ...pivot, replacements: pivot.replacements.map((item) => ({ ...item, icon: replacements.find((option) => option.id === item.id)?.icon ?? "custom" })) })) ?? []);
+        setHistory(snapshot.history ?? []);
+        setCustomContexts(snapshot.contextTags ?? []);
+      })
+      .catch(() => undefined);
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -381,9 +396,18 @@ export default function Home() {
   }
 
   async function removeHistoryEvent(id: string) {
+    const index = history.findIndex((item) => item.id === id);
+    const removed = history[index];
+    if (!removed) return;
+    setFlowError("");
+    setHistory((current) => current.filter((item) => item.id !== id));
     const response = await fetch(`/api/history/${id}`, { method: "DELETE" }).catch(() => null);
-    if (response?.ok) setHistory((current) => current.filter((item) => item.id !== id));
-    else setFlowError("That History entry could not be deleted.");
+    if (!response?.ok) {
+      setHistory((current) => current.some((item) => item.id === id) ? current : [...current.slice(0, index), removed, ...current.slice(index)]);
+      setFlowError("That History entry could not be deleted.");
+      return;
+    }
+    showDeleted({ kind: "history", id, message: `History entry “${removed.choice}” deleted` });
   }
 
   const utilityNav: UtilityNavItem[] = [

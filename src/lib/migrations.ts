@@ -108,6 +108,15 @@ const migrations = [
       "CREATE INDEX IF NOT EXISTS idx_notification_deliveries_subscription ON notification_deliveries(subscription_id)",
     ],
   },
+  {
+    // Soft deletes behind "Deleted · Undo": see src/lib/trash.ts.
+    version: 12,
+    statements: [
+      "ALTER TABLE pivots ADD COLUMN deleted_at TEXT",
+      "ALTER TABLE follow_ups ADD COLUMN deleted_at TEXT",
+      "ALTER TABLE context_tags ADD COLUMN deleted_at TEXT",
+    ],
+  },
 ] as const;
 
 async function hasColumn(db: Client, table: string, column: string) {

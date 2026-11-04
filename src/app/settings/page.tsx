@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { signIn, signOut } from "next-auth/react";
 import { AppShell, type UtilityNavItem } from "@/components/pivot/app-shell";
 import { InstallPivot } from "@/components/pivot/install-pivot";
 import { NotificationSettings } from "@/components/pivot/notification-settings";
 import { Icon } from "@/components/pivot/ui";
+import { ConfirmDialog } from "@/components/pivot/confirm-dialog";
+import { usePivotDataChanged, useUndoToast } from "@/components/pivot/undo-toast";
 import { unsubscribeCurrentPushSubscription } from "@/lib/push-client";
 
 type Pivot = { id: string; goal: string; replacements: { id: string; name: string }[] };
@@ -27,21 +29,33 @@ export default function SettingsPage() {
   const [contextTags, setContextTags] = useState<string[]>([]);
   const [account, setAccount] = useState<AccountInfo>({ configured: false, authenticated: false });
   const [status, setStatus] = useState("");
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+  const { showDeleted } = useUndoToast();
 
-  useEffect(() => {
+  const loadState = useCallback(() => {
     void fetch("/api/state").then((response) => response.ok ? response.json() : null).then((snapshot: { pivots?: Pivot[]; contextTags?: string[]; history?: HistoryEvent[] } | null) => {
       setPivots(snapshot?.pivots ?? []);
       setContextTags(snapshot?.contextTags ?? []);
       setPivotCounts((snapshot?.history ?? []).reduce<Record<string, number>>((acc, event) => { if (event.pivotId) acc[event.pivotId] = (acc[event.pivotId] ?? 0) + 1; return acc; }, {}));
     }).catch(() => setStatus("Could not load your settings."));
-    void fetch("/api/account").then((response) => response.ok ? response.json() : null).then((value: AccountInfo | null) => { if (value) setAccount(value); }).catch(() => undefined);
   }, []);
 
+  usePivotDataChanged(loadState);
+
+  useEffect(() => {
+    loadState();
+    void fetch("/api/account").then((response) => response.ok ? response.json() : null).then((value: AccountInfo | null) => { if (value) setAccount(value); }).catch(() => undefined);
+  }, [loadState]);
+
+  // Deleting everything cannot be undone, so it asks first, in the app's own dialog.
   async function deleteData() {
-    if (!window.confirm(`Delete your pivots, history, and ${account.authenticated ? "connected Pivot account" : "anonymous session"}?`)) return;
-    const response = await fetch("/api/session", { method: "DELETE" });
-    if (response.ok) { await unsubscribeCurrentPushSubscription({ notifyServer: false }).catch(() => undefined); localStorage.removeItem("pivot-state"); if (account.authenticated) await signOut({ redirectTo: "/onboarding" }); else router.push("/onboarding"); }
-    else setStatus("Your data could not be deleted. Please try again.");
+    setDeleting(true);
+    setDeleteError("");
+    const response = await fetch("/api/session", { method: "DELETE" }).catch(() => null);
+    if (response?.ok) { await unsubscribeCurrentPushSubscription({ notifyServer: false }).catch(() => undefined); localStorage.removeItem("pivot-state"); if (account.authenticated) await signOut({ redirectTo: "/onboarding" }); else router.push("/onboarding"); }
+    else { setDeleting(false); setDeleteError("Your data could not be deleted. Please try again."); }
   }
 
   async function disconnectAccount() {
@@ -61,9 +75,15 @@ export default function SettingsPage() {
   }
 
   async function removeTag(label: string) {
+    const index = contextTags.indexOf(label);
+    setContextTags((current) => current.filter((tag) => tag !== label));
     const response = await fetch(`/api/tags?label=${encodeURIComponent(label)}`, { method: "DELETE" }).catch(() => null);
-    if (response?.ok) setContextTags((current) => current.filter((tag) => tag !== label));
-    else setStatus("That tag could not be removed.");
+    if (!response?.ok) {
+      setContextTags((current) => current.includes(label) ? current : [...current.slice(0, index), label, ...current.slice(index)]);
+      setStatus("That tag could not be removed.");
+      return;
+    }
+    showDeleted({ kind: "tag", id: label, message: `Tag “${label}” removed` });
   }
 
   return (
@@ -105,11 +125,15 @@ export default function SettingsPage() {
               <div><span className="card-kicker">Your data</span><h2>Export or delete</h2></div>
               <p className="settings-copy">Download a readable JSON copy of your pivots, tags, History, active action, and notification preference. One-time context notes are never included because Pivot does not store them.</p>
               <a className="secondary-button full" href="/api/export" download>Download my data <Icon name="download" size={18} /></a>
-              <button type="button" className="danger-button" onClick={deleteData}>Delete all my data</button>
+              <button type="button" className="danger-button" onClick={() => { setDeleteError(""); setConfirmingDelete(true); }}>Delete all my data</button>
               {status && <p className="form-status" role="status">{status}</p>}
             </section>
           </aside>
         </div>
+        <ConfirmDialog open={confirmingDelete} title="Delete all your data?" confirmLabel="Delete all my data" confirmWord="delete" busy={deleting} error={deleteError} onConfirm={deleteData} onCancel={() => setConfirmingDelete(false)}>
+          <p>This permanently removes your pivots, actions, tags, History and check-in reminders{account.authenticated ? ", and your connected Pivot account" : " and this anonymous session"}. It cannot be undone.</p>
+          <p>To keep a copy, download your data first.</p>
+        </ConfirmDialog>
         <p className="privacy-note"><span className="privacy-ic"><Icon name="shield" size={15} /></span> Pivot does not require an account to be useful.</p>
       </div>
     </AppShell>
