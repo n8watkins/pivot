@@ -129,8 +129,10 @@ test("deleting all data removes notification preferences, subscriptions, and del
   const subscriptionId = String(before.rows[0].id);
   await executeWhenDatabaseIsAvailable({ sql: "INSERT INTO notification_deliveries (id, subscription_id, cadence, period_key, scheduled_for, status, created_at) VALUES (?, ?, 'weekly', '2026-W30', '2026-07-20T16:00:00.000Z', 'sent', '2026-07-20T16:00:00.000Z')", args: [crypto.randomUUID(), subscriptionId] });
 
-  page.once("dialog", (dialog) => dialog.accept());
   await page.getByRole("button", { name: "Delete all my data" }).click();
+  const dialog = page.getByRole("dialog", { name: "Delete all your data?" });
+  await dialog.getByLabel(/Type “delete” to confirm/).fill("delete");
+  await dialog.getByRole("button", { name: "Delete all my data" }).click();
   await page.waitForURL("**/onboarding");
 
   for (const table of ["notification_preferences", "push_subscriptions"]) {

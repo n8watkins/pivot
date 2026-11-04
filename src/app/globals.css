@@ -2512,3 +2512,201 @@ h1 {
     animation-duration: .01ms !important;
   }
 }
+
+/* ============================================================
+   Undo toasts and confirm dialogs
+   ============================================================ */
+
+.toast-region {
+  position: fixed;
+  left: 50%;
+  bottom: calc(24px + env(safe-area-inset-bottom));
+  z-index: 60;
+  width: min(440px, calc(100vw - 32px));
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.toast-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 52px;
+  padding: 6px 6px 6px 16px;
+  border-radius: var(--radius-sm);
+  background: var(--ink);
+  color: #fff;
+  box-shadow: var(--shadow-lg);
+  font-size: 14px;
+  line-height: 1.35;
+  pointer-events: auto;
+  animation: toast-in .2s ease-out;
+}
+
+.toast-message {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.toast-undo,
+.toast-close {
+  display: grid;
+  min-width: 44px;
+  min-height: 44px;
+  place-items: center;
+  border: 0;
+  border-radius: 9px;
+  background: none;
+  color: inherit;
+}
+
+.toast-undo {
+  padding: 0 14px;
+  color: var(--sage);
+  font-weight: 700;
+}
+
+.toast-undo:hover,
+.toast-close:hover {
+  background: rgba(255, 255, 255, .1);
+}
+
+.toast-close {
+  color: rgba(255, 255, 255, .7);
+}
+
+.toast :focus-visible {
+  outline-color: var(--sage);
+  outline-offset: 0;
+}
+
+.toast-notice {
+  padding-right: 16px;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@media (max-width: 899px) {
+  /* Sit above the bottom tab bar. */
+  .toast-region {
+    bottom: calc(var(--tabbar-h) + 12px + env(safe-area-inset-bottom));
+  }
+}
+
+.confirm-dialog {
+  width: min(420px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  margin: auto;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--card);
+  color: var(--ink);
+  box-shadow: var(--shadow-lg);
+}
+
+.confirm-dialog::backdrop {
+  background: rgba(38, 48, 43, .45);
+}
+
+.confirm-dialog-body {
+  padding: 24px;
+}
+
+.confirm-dialog h2 {
+  margin: 0 0 10px;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -.02em;
+  line-height: 1.25;
+}
+
+.confirm-dialog-copy {
+  margin-bottom: 18px;
+  color: var(--ink-soft);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.confirm-dialog-copy p,
+.confirm-dialog-copy ul {
+  margin: 0 0 10px;
+}
+
+.confirm-dialog-copy ul {
+  padding-left: 20px;
+}
+
+.confirm-dialog .text-input {
+  margin-bottom: 16px;
+}
+
+.confirm-dialog-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.confirm-dialog-actions .secondary-button {
+  min-height: 48px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--ink);
+}
+
+.destructive-button {
+  min-height: 48px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--coral-strong);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  padding: 0 16px;
+}
+
+.destructive-button:hover:not(:disabled) {
+  background: #8f3e24;
+}
+
+.destructive-button:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+
+@media (max-width: 480px) {
+  /* Stacked, so the destructive label stays on one line; it sits nearest the thumb. */
+  .confirm-dialog-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .confirm-dialog-actions .destructive-button {
+    order: -1;
+  }
+}
+
+/* Manage pivots: the list is the whole card, so it needs no top rule or gap of its own. */
+.settings-section > .settings-list:first-child {
+  margin-top: 0;
+  border-top: 0;
+}
+
+.settings-section > .settings-list:first-child > .settings-pivot:last-child {
+  border-bottom: 0;
+}
+
+.settings-page > .primary-button + .settings-section {
+  margin-top: 16px;
+}

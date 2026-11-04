@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { AppShell, type UtilityNavItem } from "@/components/pivot/app-shell";
 import { Icon } from "@/components/pivot/ui";
+import { usePivotDataChanged } from "@/components/pivot/undo-toast";
 
 type Pivot = { id: string; goal: string; replacements: { id: string; name: string }[] };
 type HistoryEvent = { pivotId?: string };
@@ -19,12 +20,16 @@ export default function PivotsPage() {
   const [pivotCounts, setPivotCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const load = useCallback(() => {
     void fetch("/api/state").then((response) => response.ok ? response.json() : null).then((snapshot: { pivots?: Pivot[]; history?: HistoryEvent[] } | null) => {
       setPivots(snapshot?.pivots ?? []);
       setPivotCounts((snapshot?.history ?? []).reduce<Record<string, number>>((acc, event) => { if (event.pivotId) acc[event.pivotId] = (acc[event.pivotId] ?? 0) + 1; return acc; }, {}));
-    }).finally(() => setLoading(false));
+    }).catch(() => undefined).finally(() => setLoading(false));
   }, []);
+
+  useEffect(load, [load]);
+  // An Undo after deleting a pivot brings it back into this list in its old place.
+  usePivotDataChanged(load);
 
   return (
     <AppShell pivots={pivots.map((pivot) => ({ id: pivot.id, goal: pivot.goal }))} activePivotId={null} pivotCounts={pivotCounts} utilityNav={utilityNav}>
