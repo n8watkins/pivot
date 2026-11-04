@@ -14,9 +14,16 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const TITLE = "Pivot - A small next step";
+const DESCRIPTION = "A calm pause space for choosing a different next step when an urge appears.";
+
 export const metadata: Metadata = {
-  title: "Pivot - A small next step",
-  description: "A calm pause space for choosing a different next step when an urge appears.",
+  // Absolute base so the share image (app/opengraph-image.tsx) resolves in unfurls.
+  metadataBase: new URL("https://pivot.n8builds.dev"),
+  title: TITLE,
+  description: DESCRIPTION,
+  openGraph: { type: "website", siteName: "Pivot", title: TITLE, description: DESCRIPTION, url: "/" },
+  twitter: { card: "summary_large_image", title: TITLE, description: DESCRIPTION },
   applicationName: "Pivot",
   manifest: "/manifest.webmanifest",
   formatDetection: { telephone: false },

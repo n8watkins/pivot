@@ -16,5 +16,5 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   // Pages and the API routes that read the session; not static files, auth callbacks or the cron job.
-  matcher: ["/((?!_next/static|_next/image|api/auth|api/cron|api/health|icons/|favicon.ico|sw.js|manifest.webmanifest|.*\\.(?:svg|png|ico|webmanifest)$).*)"],
+  matcher: ["/((?!_next/static|_next/image|api/auth|api/cron|api/health|icons/|favicon.ico|sw.js|manifest.webmanifest|opengraph-image|twitter-image|.*\\.(?:svg|png|ico|webmanifest)$).*)"],
 };
