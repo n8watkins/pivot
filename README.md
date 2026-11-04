@@ -22,6 +22,7 @@ It supports any everyday habit, keeps each habit and its replacement actions in 
   The check runs on the device first and again on the server, so it never depends on the network.
 - The same deterministic check also catches passive ideation, leetspeak and spaced-out spellings, abuse and domestic violence, sexual assault, and overdose or medical emergencies, and shows the matching US lines (Crisis Text Line, the National Domestic Violence Hotline, RAINN, Poison Control) beside 988 and 911.
 - Unsupported clinical-category routing to specialized support, with real resources (988, Crisis Text Line, and the SAMHSA helpline for substance use) instead of a generic referral.
+- A static `/welcome` landing page for first-time visitors explains Pivot, shows the app, offers an install hint, and keeps the crisis lines one tap away. `/` stays the app itself, and its first-visit state links to `/welcome`.
 - A static `/help` page lists every crisis line, linked from the safety footer on every screen, and works without JavaScript or the database.
 - Short privacy and terms pages at `/privacy` and `/terms`, linked from onboarding, Settings, and the note field.
 
