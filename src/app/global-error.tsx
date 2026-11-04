@@ -1,8 +1,13 @@
 "use client";
 
+import { useEffect } from "react";
+import { reportError } from "@/lib/error-reporting";
+
 // Shown only when the root layout itself fails, so it carries its own markup and styles.
 // The crisis lines are plain links and text: they work even if nothing else on the page does.
-export default function GlobalError({ reset }: { error: Error & { digest?: string }; reset: () => void }) {
+export default function GlobalError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
+  useEffect(() => reportError(error), [error]);
+
   return (
     <html lang="en">
       <body style={{ margin: 0, fontFamily: "system-ui, -apple-system, Segoe UI, Arial, sans-serif", background: "#f5f7f2", color: "#26302b" }}>

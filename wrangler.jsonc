@@ -29,7 +29,10 @@
   "vars": {
     // The canonical origin: Auth.js builds its callback URLs from it.
     "AUTH_URL": "https://pivot.n8builds.dev",
-    "WEB_PUSH_SUBJECT": "mailto:nathancwatkins23@gmail.com"
+    "WEB_PUSH_SUBJECT": "mailto:nathancwatkins23@gmail.com",
+    // Server errors go to Sentry (worker/sentry.ts). A DSN is public by design:
+    // it only lets a sender add events to this one project.
+    "SENTRY_DSN": "https://c1531709f2591d04e6f05afc93750d68@o4507767562371072.ingest.us.sentry.io/4512375297343488"
   }
   // Secrets are set with `wrangler secret put <NAME>`, never in this file.
   // .dev.vars.example lists them (and generates their binding types); local
