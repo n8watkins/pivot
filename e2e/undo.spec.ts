@@ -70,6 +70,8 @@ test("a deleted pivot stays deleted once the toast runs out", async ({ page }) =
 
 test("the toast is announced politely, keeps focus where it was and passes axe at phone width", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
+  // No entrance animation, so axe measures the toast's real colors rather than a frame mid-fade.
+  await page.emulateMedia({ reducedMotion: "reduce" });
   await createPivots(page, ["Morning news"]);
   await page.goto("/settings");
   await page.request.post("/api/tags", { data: { label: "restless" } });
