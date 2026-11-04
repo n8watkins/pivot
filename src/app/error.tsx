@@ -3,10 +3,12 @@
 import Link from "next/link";
 import { useEffect } from "react";
 import { SafetyFooter } from "@/components/pivot/legal-page";
+import { reportError } from "@/lib/error-reporting";
 
 export default function ErrorPage({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   useEffect(() => {
     console.error("Pivot route error", { digest: error.digest, name: error.name });
+    reportError(error);
   }, [error]);
 
   return (

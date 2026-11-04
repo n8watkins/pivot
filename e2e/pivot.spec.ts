@@ -250,6 +250,13 @@ test("the crisis lines page works without JavaScript", async ({ browser }) => {
   await context.close();
 });
 
+test("unknown paths answer 404 with Pivot's not-found page", async ({ page }) => {
+  const response = await page.goto("/no-such-page");
+  expect(response?.status()).toBe(404);
+  await expect(page.getByRole("heading", { level: 1, name: "This path does not lead to a pivot." })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Return home" })).toHaveAttribute("href", "/");
+});
+
 test("not-found and offline pages keep the crisis line", async ({ page }) => {
   for (const path of ["/no-such-page", "/offline"]) {
     await page.goto(path);
@@ -750,6 +757,9 @@ test("security headers are present", async ({ request }) => {
   expect(response.headers()["x-content-type-options"]).toBe("nosniff");
   expect(response.headers()["x-frame-options"]).toBe("DENY");
   expect(response.headers()["content-security-policy"]).toContain("frame-ancestors 'none'");
+  // Cloudflare Web Analytics' beacon and Sentry are allowed, or their data is silently lost.
+  expect(response.headers()["content-security-policy"]).toMatch(/script-src [^;]*https:\/\/static\.cloudflareinsights\.com/);
+  expect(response.headers()["content-security-policy"]).toMatch(/connect-src [^;]*https:\/\/cloudflareinsights\.com/);
 });
 
 test("primary pages have no automated accessibility violations", async ({ page }) => {

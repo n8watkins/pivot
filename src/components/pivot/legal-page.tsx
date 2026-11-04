@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { Icon, Logo } from "@/components/pivot/ui";
 
-export const LEGAL_UPDATED = "November 3, 2026";
+export const LEGAL_UPDATED = "November 4, 2026";
 
 export function LegalPage({ eyebrow, title, lede, children }: { eyebrow: string; title: string; lede: string; children: ReactNode }) {
   return (

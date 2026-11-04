@@ -58,4 +58,8 @@ jobs:
         if: steps.token.outputs.present == 'true'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          # Browser errors go to Sentry (src/lib/error-reporting.ts). Only this
+          # build sets the DSN, so local, CI and test builds send nothing.
+          NEXT_PUBLIC_SENTRY_DSN: https://c1531709f2591d04e6f05afc93750d68@o4507767562371072.ingest.us.sentry.io/4512375297343488
+          NEXT_PUBLIC_SENTRY_RELEASE: ${{ github.event.workflow_run.head_sha || github.sha }}
         run: npm run deploy:worker
