@@ -2,7 +2,7 @@
 //
 // Each entry is an action that already happened in the UI. While its toast shows the user can
 // undo it; once the toast times out, is dismissed, or the page is hidden, the entry commits
-// (for Pivot: the server drops the soft-deleted row for good). Undo and commit each run once.
+// (the server drops a soft-deleted row for good). Undo and commit each run once.
 
 export const UNDO_TOAST_MS = 6_000;
 export const MAX_VISIBLE_TOASTS = 3;
@@ -65,10 +65,18 @@ export function createUndoQueue(options: {
     return entry;
   }
 
-  /** Closes a toast and commits its action. */
+  /**
+   * Closes a toast and commits its action. The commit starts synchronously: during pagehide
+   * a request (keepalive) must be started before the handler returns or it may never be sent.
+   */
   function finish(id: string) {
     const entry = take(id);
-    if (entry) void Promise.resolve().then(() => entry.commit?.()).catch(() => undefined);
+    if (!entry?.commit) return;
+    try {
+      void Promise.resolve(entry.commit()).catch(() => undefined);
+    } catch {
+      // A commit that throws synchronously is treated like one that rejected.
+    }
   }
 
   return {
@@ -78,7 +86,7 @@ export function createUndoQueue(options: {
       const pending: Pending = { ...entry, remaining: duration, startedAt: scheduler.now(), timer: null };
       entries = [...entries, pending];
       // Older toasts beyond the visible stack are committed rather than silently kept.
-      while (entries.length > maxVisible) finish(entries[0].id);
+      for (let oldest = entries[0]; oldest && entries.length > maxVisible; oldest = entries[0]) finish(oldest.id);
       arm(pending);
       publish();
     },
