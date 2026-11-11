@@ -56,11 +56,14 @@ describe("Worker cron handler", () => {
 });
 
 describe("Worker fetch handler", () => {
-  it("serves every request from the Next.js app", async () => {
+  it("serves API routes and other hosts from the Next.js app", async () => {
     const response = new Response("ok");
     openNext.fetch.mockResolvedValue(response);
-    const request = new Request("https://pivot.example/privacy");
-    await expect(handlers.fetch(request, {}, ctx)).resolves.toBe(response);
-    expect(openNext.fetch).toHaveBeenCalledWith(request, {}, ctx);
+    const env = { AUTH_URL: "https://pivot.n8builds.dev" };
+    for (const url of ["https://pivot.n8builds.dev/api/trash", "https://pivot.example/privacy"]) {
+      const request = new Request(url);
+      await expect(handlers.fetch(request, env, ctx)).resolves.toBe(response);
+      expect(openNext.fetch).toHaveBeenCalledWith(request, env, ctx);
+    }
   });
 });

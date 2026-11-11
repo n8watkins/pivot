@@ -6,6 +6,12 @@
 // its route-level tests. The route authorizes the call with CRON_SECRET.
 
 import { errorSummary, logError, pathOf } from "../src/lib/log";
+import { mayUseEdgeCache, withSession, withSetCookie } from "./edge-cache";
+
+/** The cached entrypoint (worker/index.ts), reached through ctx.exports. */
+export type CachedPagesExports = {
+  exports: { CachedPages: { fetch(request: Request): Promise<Response> } };
+};
 
 export type FetchHandler = {
   fetch(request: Request, env: CloudflareEnv, ctx: ExecutionContext): Promise<Response>;
@@ -41,6 +47,11 @@ export function createWorker(app: FetchHandler) {
   return {
     async fetch(request, env, ctx) {
       try {
+        if (mayUseEdgeCache(request, new URL(env.AUTH_URL).hostname)) {
+          const { request: cacheable, setCookie } = withSession(request);
+          const cached = (ctx as ExecutionContext & CachedPagesExports).exports.CachedPages;
+          return withSetCookie(await cached.fetch(cacheable), setCookie);
+        }
         return await app.fetch(request, env, ctx);
       } catch (err) {
         // Next reports its own errors (instrumentation onRequestError); this
