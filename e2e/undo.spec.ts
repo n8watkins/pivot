@@ -114,9 +114,14 @@ test("Ctrl+Z undoes a History delete and the entry returns in place", async ({ p
   await expect(entries).toHaveCount(2);
   const before = await entries.allTextContents();
 
-  await page.getByRole("button", { name: /Delete Take a short walk History entry/ }).last().click();
+  // "Skip and show me something" picks an action at random, so the entries' titles are not fixed:
+  // delete the last one, whatever it is called.
+  const deleteButton = page.getByRole("button", { name: /^Delete .* History entry$/ }).last();
+  const title = /^Delete (.*) History entry$/.exec((await deleteButton.getAttribute("aria-label")) ?? "")?.[1];
+  expect(title, "the last entry's delete button names it").toBeTruthy();
+  await deleteButton.click();
   await expect(entries).toHaveCount(1);
-  await expect(toast(page, "History entry “Take a short walk” deleted")).toBeVisible();
+  await expect(toast(page, `History entry “${title}” deleted`)).toBeVisible();
   await Promise.all([page.waitForResponse("**/api/trash"), page.keyboard.press("Control+z")]);
   await expect(entries).toHaveCount(2);
   expect(await entries.allTextContents()).toEqual(before);
