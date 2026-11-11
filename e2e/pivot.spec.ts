@@ -565,7 +565,8 @@ test("custom context tags persist and can be removed in settings", async ({ page
   await page.goto("/settings");
   await expect(page.getByText("restless")).toBeVisible();
   await page.getByRole("button", { name: "Remove restless" }).click();
-  await expect(page.getByText("restless")).not.toBeVisible();
+  // The tag itself is gone; the Undo toast ("Tag “restless” removed") still names it.
+  await expect(page.getByRole("button", { name: "Remove restless" })).toHaveCount(0);
 });
 
 test("individual History entries can be deleted", async ({ page }) => {
