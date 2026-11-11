@@ -6,6 +6,7 @@
 // its route-level tests. The route authorizes the call with CRON_SECRET.
 
 import { errorSummary, logError, pathOf } from "../src/lib/log";
+import { healthCheck } from "./health";
 import { mayUseEdgeCache, withSession, withSetCookie } from "./edge-cache";
 
 /** The cached entrypoint (worker/index.ts), reached through ctx.exports. */
@@ -46,6 +47,9 @@ export async function runNotificationCron(app: FetchHandler, env: CloudflareEnv,
 export function createWorker(app: FetchHandler) {
   return {
     async fetch(request, env, ctx) {
+      // The uptime check answers before the edge cache, Next.js, auth or the database.
+      const health = healthCheck(request);
+      if (health) return health;
       try {
         if (mayUseEdgeCache(request, new URL(env.AUTH_URL).hostname)) {
           const { request: cacheable, setCookie } = withSession(request);
