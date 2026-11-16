@@ -8,6 +8,7 @@
 import { errorSummary, logError, pathOf } from "../src/lib/log";
 import { healthCheck } from "./health";
 import { mayUseEdgeCache, withSession, withSetCookie } from "./edge-cache";
+import { missingFile } from "./missing-file";
 
 /** The cached entrypoint (worker/index.ts), reached through ctx.exports. */
 export type CachedPagesExports = {
@@ -51,6 +52,9 @@ export function createWorker(app: FetchHandler) {
       const health = healthCheck(request);
       if (health) return health;
       try {
+        // File-like paths that are not routes (scanners) get a plain 404 before Next.
+        const missing = missingFile(request);
+        if (missing) return missing;
         if (mayUseEdgeCache(request, new URL(env.AUTH_URL).hostname)) {
           const { request: cacheable, setCookie } = withSession(request);
           const cached = (ctx as ExecutionContext & CachedPagesExports).exports.CachedPages;
